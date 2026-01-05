@@ -33,8 +33,12 @@ const Login = () => {
       
       const response = await axios.post('https://aelvix-ai-backend.onrender.com/api/users/login', formData);
       console.log('Login success:', response.data);
-      alert('Login Successful!'); 
-      // In a real app we'd save the token here
+      
+      const { token, user } = response.data;
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(user));
+      
+      // Navigate to dashboard after successful login
       navigate('/');
     } catch (err) {
       console.error('Login error:', err);
