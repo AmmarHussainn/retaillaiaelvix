@@ -1,10 +1,15 @@
-
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
-import './index.css'; // Ensure tailwind is applied if not already via index.js, but standard is usually index.js. 
-// I will remove App.css import as it usually contains default react styling.
+import DashboardLayout from './components/layout/DashboardLayout';
+import Agents from './pages/Agents';
+import KnowledgeBase from './pages/KnowledgeBase';
+import PhoneNumbers from './pages/PhoneNumbers';
+import Settings from './pages/Settings';
+import './index.css';
+
+// Placeholder components for now
 
 function App() {
   return (
@@ -13,8 +18,15 @@ function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
-          {/* Default redirect to login for now since there's no protected dashboard yet */}
-          <Route path="/" element={<Navigate to="/login" replace />} />
+          
+          {/* Protected Dashboard Routes */}
+          <Route path="/" element={<DashboardLayout />}>
+            <Route index element={<Navigate to="/agents" replace />} />
+            <Route path="agents" element={<Agents />} />
+            <Route path="knowledge-base" element={<KnowledgeBase />} />
+            <Route path="phone-numbers" element={<PhoneNumbers />} />
+            <Route path="settings" element={<Settings />} />
+          </Route>
         </Routes>
       </div>
     </Router>
