@@ -9,6 +9,7 @@ import Agents from './pages/Agents';
 import KnowledgeBase from './pages/KnowledgeBase';
 import PhoneNumbers from './pages/PhoneNumbers';
 import Settings from './pages/Settings';
+import LLMs from './pages/LLMs';
 import './index.css';
 
 // Placeholder components for now
@@ -29,6 +30,7 @@ function App() {
             <Route path="/" element={<DashboardLayout />}>
               <Route index element={<Navigate to="/agents" replace />} />
               <Route path="agents" element={<Agents />} />
+              <Route path="llms" element={<LLMs />} />
               <Route path="knowledge-base" element={<KnowledgeBase />} />
               <Route path="phone-numbers" element={<PhoneNumbers />} />
               <Route path="settings" element={<Settings />} />

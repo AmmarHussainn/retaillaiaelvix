@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, Database, Phone, Settings, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, Database, Phone, Settings, LogOut, MessageSquare } from 'lucide-react';
 
 const DashboardLayout = () => {
   const navigate = useNavigate();
@@ -13,6 +13,7 @@ const DashboardLayout = () => {
 
   const navItems = [
     { name: 'Agents', path: '/agents', icon: Users },
+    { name: 'LLMs', path: '/llms', icon: MessageSquare },
     { name: 'Knowledge Base', path: '/knowledge-base', icon: Database },
     { name: 'Phone Number', path: '/phone-numbers', icon: Phone },
     { name: 'Settings', path: '/settings', icon: Settings },

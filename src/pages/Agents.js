@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, MoreVertical, Mic, Trash2 } from 'lucide-react';
-import { agentService } from '../services/agentService';
+import agentService from '../services/agentService';
 import CreateAgentModal from '../components/agents/CreateAgentModal'; // We'll create this next
 
 const Agents = () => {

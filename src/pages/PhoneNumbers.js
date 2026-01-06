@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Phone, User, Link as LinkIcon, Unlink } from 'lucide-react';
 import { phoneNumberService } from '../services/phoneNumberService';
-import { agentService } from '../services/agentService';
+import agentService from '../services/agentService';
 
 const PhoneNumbers = () => {
   const [phoneNumbers, setPhoneNumbers] = useState([]);

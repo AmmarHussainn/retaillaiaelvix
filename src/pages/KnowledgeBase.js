@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, FileText, Trash2, Database } from 'lucide-react';
-import { knowledgeBaseService } from '../services/knowledgeBaseService';
+import knowledgeBaseService from '../services/knowledgeBaseService';
 import CreateKnowledgeModal from '../components/knowledge/CreateKnowledgeModal'; // We'll create this next
 
 const KnowledgeBase = () => {
