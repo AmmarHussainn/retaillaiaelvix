@@ -16,7 +16,7 @@ const DashboardLayout = () => {
     { name: 'LLMs', path: '/llms', icon: MessageSquare },
     { name: 'Knowledge Base', path: '/knowledge-base', icon: Database },
     { name: 'Phone Number', path: '/phone-numbers', icon: Phone },
-    { name: 'Settings', path: '/settings', icon: Settings },
+    // { name: 'Settings', path: '/settings', icon: Settings },
   ];
 
   return (

@@ -36,7 +36,7 @@ function App() {
                 <Route path="llms" element={<LLMs />} />
                 <Route path="knowledge-base" element={<KnowledgeBase />} />
                 <Route path="phone-numbers" element={<PhoneNumbers />} />
-                <Route path="settings" element={<Settings />} />
+                {/* <Route path="settings" element={<Settings />} /> */}
               </Route>
             </Route>
           </Routes>
