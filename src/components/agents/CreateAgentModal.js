@@ -9,8 +9,7 @@ const CreateAgentModal = ({ onClose, onCreated }) => {
     agent_name: '',
     response_engine: {
       type: 'retell-llm',
-      llm_id: '',
-      version: 0
+      llm_id: ''
     },
     voice_id: '11labs-Adrian',
     voice_model: 'eleven_turbo_v2_5',
@@ -87,7 +86,33 @@ const CreateAgentModal = ({ onClose, onCreated }) => {
     setError('');
 
     try {
-      const newAgent = await agentService.createAgent(formData);
+      // Construct strict payload for Retell API
+      const payload = {
+        agent_name: formData.agent_name,
+        response_engine: {
+          type: 'retell-llm',
+          llm_id: formData.response_engine.llm_id
+        },
+        voice_id: formData.voice_id,
+        voice_model: formData.voice_model,
+        enable_backchannel: formData.enable_backchannel,
+        backchannel_frequency: formData.backchannel_frequency,
+        responsiveness: formData.responsiveness,
+        interruption_sensitivity: formData.interruption_sensitivity,
+        voice_speed: formData.voice_speed,
+        volume: formData.volume,
+        voice_temperature: formData.voice_temperature,
+        language: formData.language,
+        knowledge_base_ids: formData.knowledge_base_ids
+      };
+
+      // Handle ambient sound - remove if 'null' or empty
+      if (formData.ambient_sound && formData.ambient_sound !== 'null') {
+        payload.ambient_sound = formData.ambient_sound;
+        payload.ambient_sound_volume = formData.ambient_sound_volume;
+      }
+
+      const newAgent = await agentService.createAgent(payload);
       onCreated(newAgent);
     } catch (err) {
       console.error('Failed to create agent:', err);
@@ -153,14 +178,26 @@ const CreateAgentModal = ({ onClose, onCreated }) => {
                 required
               >
                 <option value="">-- Select an LLM Configuration --</option>
-                {llms.map(llm => (
-                   <option key={llm.llm_id || llm._id || llm.id} value={llm.llm_id || llm._id || llm.id}>
-                     {llm.model} - {llm.general_prompt?.substring(0, 30)}...
+                {llms.map(llm => {
+                  // Try to find the correct Retell ID field
+                  const retellId = llm.llm_id || llm.retell_llm_id;
+                  const value = (retellId && retellId.startsWith('llm_')) ? retellId : (llm._id || llm.id);
+                  const isRetellId = value && value.startsWith('llm_');
+                  
+                  return (
+                   <option key={llm._id || llm.id} value={value}>
+                     {llm.model} - {llm.general_prompt?.substring(0, 30)}... {!isRetellId ? '(Invalid ID)' : ''}
                    </option>
-                ))}
+                  );
+                })}
               </select>
               {llms.length === 0 && (
                 <p className="text-sm text-red-500 mt-2">No LLMs found. Please create an LLM first.</p>
+              )}
+              {formData.response_engine.llm_id && !formData.response_engine.llm_id.startsWith('llm_') && (
+                 <p className="text-xs text-amber-600 mt-1">
+                   Warning: Selected LLM doest not appear to have a valid Retell ID (should start with "llm_").
+                 </p>
               )}
             </div>
 

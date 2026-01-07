@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, MoreVertical, Mic, Trash2 } from 'lucide-react';
 import agentService from '../services/agentService';
-import CreateAgentModal from '../components/agents/CreateAgentModal'; // We'll create this next
+import CreateAgentModal from '../components/agents/CreateAgentModal';
+import { useToast } from '../context/ToastContext';
 
 const Agents = () => {
   const [agents, setAgents] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [error, setError] = useState('');
+  const toast = useToast();
 
   // Fetch agents on mount
   useEffect(() => {
@@ -23,6 +25,7 @@ const Agents = () => {
     } catch (err) {
       console.error('Error fetching agents:', err);
       setError('Failed to load agents.');
+      toast.error('Failed to fetch agents');
       // Mock data for development if API fails or is not ready
       // setAgents([
       //   { _id: '1', name: 'Sales Assistant', type: 'voice', status: 'active', createdAt: new Date().toISOString() },
@@ -36,6 +39,7 @@ const Agents = () => {
   const handleAgentCreated = (newAgent) => {
     setAgents([newAgent, ...agents]);
     setIsModalOpen(false);
+    toast.success('Agent created successfully');
   };
 
   return (
@@ -64,27 +68,27 @@ const Agents = () => {
         />
       </div>
 
-      {/* Agents List */}
+      {/* Agents Grid */}
       {isLoading ? (
-        <div className="text-center py-10">
+        <div className="text-center py-20">
           <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-gray-500">Loading agents...</p>
         </div>
       ) : error ? (
-        <div className="text-center py-10 bg-red-50 rounded-lg border border-red-100">
-           <p className="text-red-500">{error}</p>
-           <button onClick={fetchAgents} className="mt-2 text-blue-600 hover:underline">Retry</button>
+        <div className="text-center py-12 bg-red-50 rounded-xl border border-red-100">
+           <p className="text-red-500 font-medium">{error}</p>
+           <button onClick={fetchAgents} className="mt-3 text-blue-600 hover:text-blue-800 font-medium underline">Retry Connection</button>
         </div>
       ) : agents.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-xl border border-gray-200 border-dashed">
+        <div className="text-center py-20 bg-white rounded-xl border border-dashed border-gray-300">
           <div className="w-16 h-16 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
              <Mic className="w-8 h-8" />
           </div>
-          <h3 className="text-lg font-medium text-gray-900">No agents yet</h3>
-          <p className="text-gray-500 mt-1 mb-6">Create your first voice agent to get started.</p>
+          <h3 className="text-lg font-semibold text-gray-900">No agents found</h3>
+          <p className="text-gray-500 mt-2 mb-6 max-w-sm mx-auto">Create your first voice agent to start handling calls.</p>
           <button
             onClick={() => setIsModalOpen(true)}
-            className="px-4 py-2 bg-white border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors"
+            className="px-6 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
           >
             Create Agent
           </button>
@@ -92,63 +96,85 @@ const Agents = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {agents.map((agent) => (
-            <div key={agent._id || agent.id} className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow p-6 flex flex-col justify-between">
+            <div key={agent.agent_id || agent._id} className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-lg transition-shadow duration-300 p-6 flex flex-col justify-between h-full group">
               <div>
                 <div className="flex justify-between items-start mb-4">
-                  <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-lg flex items-center justify-center">
-                    <Mic className="w-6 h-6" />
+                  <div className={`px-2.5 py-1 rounded-full text-xs font-semibold uppercase tracking-wide bg-blue-50 text-blue-700`}>
+                    {agent.channel || 'Voice'}
                   </div>
-                  <button className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-50">
-                    <MoreVertical className="w-5 h-5" />
-                  </button>
+                  <div className="flex space-x-1">
+                     <button className="p-1 text-gray-300 hover:text-blue-600 transition-colors">
+                        <MoreVertical className="w-4 h-4" />
+                     </button>
+                  </div>
                 </div>
                 
-                <h3 className="text-lg font-semibold text-gray-900 mb-1">{agent.name}</h3>
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                  {agent.language || 'English'}
-                </span>
+                <h3 className="text-lg font-bold text-gray-900 mb-2 truncate" title={agent.agent_name}>
+                    {agent.agent_name || 'Untitled Agent'}
+                </h3>
                 
-                <div className="mt-4 space-y-2">
-                   <div className="flex justify-between text-sm">
-                      <span className="text-gray-500">Type</span>
-                      <span className="font-medium text-gray-900 capitalize">{agent.type || 'Voice Agent'}</span>
-                   </div>
-                   <div className="flex justify-between text-sm">
-                      <span className="text-gray-500">Status</span>
-                      <span className={`font-medium capitalize ${agent.status === 'active' ? 'text-green-600' : 'text-gray-600'}`}>
-                        {agent.status || 'Active'}
-                      </span>
-                   </div>
-                   <div className="flex justify-between text-sm">
-                      <span className="text-gray-500">Created</span>
-                      <span className="font-medium text-gray-900">
-                        {new Date(agent.createdAt || Date.now()).toLocaleDateString()}
-                      </span>
-                   </div>
+                <div className="space-y-3 mt-4">
+                    {/* Voice Info */}
+                    <div className="flex items-center text-sm text-gray-600">
+                        <Mic className="w-4 h-4 mr-2 text-purple-500" />
+                        <span className="truncate">{agent.voice_id || 'Default Voice'}</span>
+                    </div>
+
+                    {/* LLM Info - if available via nested object or direct */}
+                    <div className="flex items-center text-sm text-gray-600">
+                        <div className="w-4 h-4 mr-2 text-indigo-500 flex items-center justify-center text-[10px] font-bold border border-indigo-500 rounded">AI</div>
+                        <span className="truncate">
+                            {agent.response_engine?.llm_id ? `LLM: ...${agent.response_engine.llm_id.slice(-6)}` : 'No Brain Attached'}
+                        </span>
+                    </div>
+
+                    {/* ID Display */}
+                    <div className="flex items-center text-xs text-gray-500 font-mono bg-gray-50 px-2 py-1 rounded border border-gray-100 group-hover:border-blue-100 transition-colors">
+                        <span className="truncate flex-1">ID: {agent.agent_id}</span>
+                        <button 
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                navigator.clipboard.writeText(agent.agent_id);
+                                toast.success('Agent ID copied');
+                            }}
+                            className="ml-2 text-blue-500 hover:text-blue-700 font-sans font-medium opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                            Copy
+                        </button>
+                    </div>
                 </div>
               </div>
 
-              <div className="mt-6 pt-4 border-t border-gray-100 flex space-x-3">
-                 <button className="flex-1 px-3 py-2 bg-blue-50 text-blue-700 text-sm font-medium rounded-lg hover:bg-blue-100 transition-colors">
-                    Edit
-                 </button>
-                 <button className="flex-1 px-3 py-2 bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">
-                    View
-                 </button>
-                 <button 
-                    onClick={async () => {
-                      if(window.confirm('Delete this agent?')) {
-                        try {
-                          await agentService.deleteAgent(agent._id || agent.id);
-                          setAgents(agents.filter(a => a._id !== agent._id && a.id !== agent.id));
-                        } catch(e) { alert('Failed to delete agent'); }
-                      }
-                    }}
-                    className="px-3 py-2 bg-red-50 text-red-600 text-sm font-medium rounded-lg hover:bg-red-100 transition-colors"
-                    title="Delete Agent"
-                 >
-                    <Trash2 className="w-5 h-5" />
-                 </button>
+              <div className="mt-6 pt-4 border-t border-gray-100 flex items-center justify-between">
+                 <div className="text-xs text-gray-400">
+                    Modified {new Date(agent.last_modification_timestamp || Date.now()).toLocaleDateString()}
+                 </div>
+                 
+                 <div className="flex space-x-2">
+                    <button className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Edit Agent">
+                        {/* Reuse existing edit logic later */}
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                    </button>
+                    <button 
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          if(window.confirm('Delete this agent?')) {
+                            try {
+                              await agentService.deleteAgent(agent.agent_id);
+                              setAgents(agents.filter(a => a.agent_id !== agent.agent_id));
+                              toast.success('Agent deleted');
+                            } catch(e) { 
+                              console.error(e);
+                              toast.error('Failed to delete agent'); 
+                            }
+                          }
+                        }}
+                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" 
+                        title="Delete Agent"
+                    >
+                        <Trash2 className="w-4 h-4" />
+                    </button>
+                 </div>
               </div>
             </div>
           ))}
