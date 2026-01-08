@@ -4,6 +4,7 @@ import { Plus, Search, MessageSquare, MoreVertical, Trash2, Edit } from 'lucide-
 import llmService from '../services/llmService';
 import CreateLLMModal from '../components/llms/CreateLLMModal';
 import UpdateLLMModal from '../components/llms/UpdateLLMModal';
+import ConfirmationModal from '../components/ui/ConfirmationModal';
 import { useToast } from '../context/ToastContext';
 
 const LLMs = () => {
@@ -13,6 +14,8 @@ const LLMs = () => {
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [selectedLLM, setSelectedLLM] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [deleteModalState, setDeleteModalState] = useState({ isOpen: false, llmId: null });
+  const [isDeleting, setIsDeleting] = useState(false);
   const toast = useToast();
 
   const fetchLLMs = async () => {
@@ -31,16 +34,24 @@ const LLMs = () => {
     fetchLLMs();
   }, []);
 
-  const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this LLM?')) {
-      try {
-        await llmService.deleteLLM(id);
-        fetchLLMs();
-        toast.success('LLM deleted successfully');
-      } catch (error) {
-        console.error('Error deleting LLM:', error);
-        toast.error('Failed to delete LLM');
-      }
+  const handleInitiateDelete = (id) => {
+    setDeleteModalState({ isOpen: true, llmId: id });
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteModalState.llmId) return;
+
+    setIsDeleting(true);
+    try {
+      await llmService.deleteLLM(deleteModalState.llmId);
+      await fetchLLMs();
+      toast.success('LLM deleted successfully');
+      setDeleteModalState({ isOpen: false, llmId: null });
+    } catch (error) {
+      console.error('Error deleting LLM:', error);
+      toast.error('Failed to delete LLM');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -165,7 +176,7 @@ const LLMs = () => {
                           onClick={async (e) => {
                             e.stopPropagation();
                             // MUST use displayId (Retell LLM ID) for the backend delete endpoint
-                            await handleDelete(displayId);
+                            await handleInitiateDelete(displayId);
                           }}
                           className="px-3 py-2 bg-red-50 text-red-600 text-sm font-medium rounded-lg hover:bg-red-100 transition-colors" 
                           title="Delete LLM"
@@ -197,6 +208,17 @@ const LLMs = () => {
           onSuccess={fetchLLMs}
         />
       )}
+
+      <ConfirmationModal
+        isOpen={deleteModalState.isOpen}
+        onClose={() => setDeleteModalState({ isOpen: false, llmId: null })}
+        onConfirm={handleConfirmDelete}
+        title="Delete LLM"
+        message="Are you sure you want to delete this LLM? This action cannot be undone."
+        confirmText="Delete"
+        isDestructive={true}
+        isLoading={isDeleting}
+      />
     </div>
   );
 };
