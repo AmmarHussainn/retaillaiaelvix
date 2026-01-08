@@ -2,12 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Search, MessageSquare, MoreVertical, Trash2, Edit } from 'lucide-react';
 import llmService from '../services/llmService';
 import CreateLLMModal from '../components/llms/CreateLLMModal';
+import UpdateLLMModal from '../components/llms/UpdateLLMModal';
 import { useToast } from '../context/ToastContext';
 
 const LLMs = () => {
   const [llms, setLlms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [selectedLLM, setSelectedLLM] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const toast = useToast();
 
@@ -38,6 +41,11 @@ const LLMs = () => {
         toast.error('Failed to delete LLM');
       }
     }
+  };
+
+  const handleEdit = (llm) => {
+    setSelectedLLM(llm);
+    setShowUpdateModal(true);
   };
 
   const filteredLLMs = llms.filter(llm => 
@@ -92,9 +100,9 @@ const LLMs = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredLLMs.map((llm) => {
-             // Use _id for database operations (Delete/Key)
+             // Use _id for react keys
              const dbId = llm._id || llm.id;
-             // Use llm_id for visual display as it's the Retell identifier
+             // Use llm_id for operations (Delete/Update)
              const displayId = llm.llm_id || llm.retell_llm_id || 'N/A';
              
              return (
@@ -146,16 +154,17 @@ const LLMs = () => {
 
                 <div className="mt-6 pt-4 border-t border-gray-100 flex items-center justify-between">
                    <div className="flex space-x-2 w-full">
-                      <button className="flex-1 px-3 py-2 bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">
+                      <button 
+                        onClick={() => handleEdit(llm)}
+                        className="flex-1 px-3 py-2 bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
+                      >
                         Edit
                       </button>
                       <button 
                           onClick={async (e) => {
                             e.stopPropagation();
-                            if(window.confirm('Delete this LLM?')) {
-                              // MUST use dbId (_id) for the backend delete endpoint
-                              await handleDelete(dbId);
-                            }
+                            // MUST use displayId (Retell LLM ID) for the backend delete endpoint
+                            await handleDelete(displayId);
                           }}
                           className="px-3 py-2 bg-red-50 text-red-600 text-sm font-medium rounded-lg hover:bg-red-100 transition-colors" 
                           title="Delete LLM"
@@ -173,6 +182,17 @@ const LLMs = () => {
       {showCreateModal && (
         <CreateLLMModal
           onClose={() => setShowCreateModal(false)}
+          onSuccess={fetchLLMs}
+        />
+      )}
+
+      {showUpdateModal && selectedLLM && (
+        <UpdateLLMModal
+          llm={selectedLLM}
+          onClose={() => {
+            setShowUpdateModal(false);
+            setSelectedLLM(null);
+          }}
           onSuccess={fetchLLMs}
         />
       )}

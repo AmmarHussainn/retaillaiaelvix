@@ -2,13 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Search, MoreVertical, Mic, Trash2 } from 'lucide-react';
 import agentService from '../services/agentService';
 import CreateAgentModal from '../components/agents/CreateAgentModal';
+import UpdateAgentModal from '../components/agents/UpdateAgentModal';
 import { useToast } from '../context/ToastContext';
 
 const Agents = () => {
   const [agents, setAgents] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [selectedAgent, setSelectedAgent] = useState(null);
   const [error, setError] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
   const toast = useToast();
 
   // Fetch agents on mount
@@ -21,16 +25,18 @@ const Agents = () => {
     try {
       const data = await agentService.getAllAgents();
       // Ensure data is an array, handle if wrapped in data object
-      setAgents(Array.isArray(data) ? data : data.agents || []);
+      let agentsList = Array.isArray(data) ? data : data.agents || [];
+      
+      // Sort by last modification timestamp (newest first)
+      agentsList.sort((a, b) => {
+          return new Date(b.last_modification_timestamp || 0) - new Date(a.last_modification_timestamp || 0);
+      });
+
+      setAgents(agentsList);
     } catch (err) {
       console.error('Error fetching agents:', err);
       setError('Failed to load agents.');
       toast.error('Failed to fetch agents');
-      // Mock data for development if API fails or is not ready
-      // setAgents([
-      //   { _id: '1', name: 'Sales Assistant', type: 'voice', status: 'active', createdAt: new Date().toISOString() },
-      //   { _id: '2', name: 'Support Bot', type: 'voice', status: 'inactive', createdAt: new Date().toISOString() }
-      // ]);
     } finally {
       setIsLoading(false);
     }
@@ -41,6 +47,23 @@ const Agents = () => {
     setIsModalOpen(false);
     toast.success('Agent created successfully');
   };
+
+  const handleEdit = (agent) => {
+      setSelectedAgent(agent);
+      setShowUpdateModal(true);
+  };
+
+  const handleAgentUpdated = (updatedAgent) => {
+      setAgents(agents.map(a => a.agent_id === updatedAgent.agent_id ? updatedAgent : a));
+      setShowUpdateModal(false);
+      setSelectedAgent(null);
+      toast.success('Agent updated successfully');
+  };
+
+  const filteredAgents = agents.filter(agent => 
+      agent.agent_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      agent.agent_id?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div className="space-y-6">
@@ -58,12 +81,14 @@ const Agents = () => {
         </button>
       </div>
 
-      {/* Filters / Search Bar (Optional but good for UI) */}
+      {/* Filters / Search Bar */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
         <input 
           type="text" 
           placeholder="Search agents..." 
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
           className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
         />
       </div>
@@ -79,23 +104,27 @@ const Agents = () => {
            <p className="text-red-500 font-medium">{error}</p>
            <button onClick={fetchAgents} className="mt-3 text-blue-600 hover:text-blue-800 font-medium underline">Retry Connection</button>
         </div>
-      ) : agents.length === 0 ? (
+      ) : filteredAgents.length === 0 ? (
         <div className="text-center py-20 bg-white rounded-xl border border-dashed border-gray-300">
           <div className="w-16 h-16 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
              <Mic className="w-8 h-8" />
           </div>
           <h3 className="text-lg font-semibold text-gray-900">No agents found</h3>
-          <p className="text-gray-500 mt-2 mb-6 max-w-sm mx-auto">Create your first voice agent to start handling calls.</p>
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="px-6 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
-          >
-            Create Agent
-          </button>
+          <p className="text-gray-500 mt-2 mb-6 max-w-sm mx-auto">
+              {searchTerm ? 'No agents match your search.' : 'Create your first voice agent to start handling calls.'}
+          </p>
+          {!searchTerm && (
+            <button
+                onClick={() => setIsModalOpen(true)}
+                className="px-6 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+            >
+                Create Agent
+            </button>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {agents.map((agent) => (
+          {filteredAgents.map((agent) => (
             <div key={agent.agent_id || agent._id} className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-lg transition-shadow duration-300 p-6 flex flex-col justify-between h-full group">
               <div>
                 <div className="flex justify-between items-start mb-4">
@@ -151,8 +180,11 @@ const Agents = () => {
                  </div>
                  
                  <div className="flex space-x-2">
-                    <button className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Edit Agent">
-                        {/* Reuse existing edit logic later */}
+                    <button 
+                        onClick={() => handleEdit(agent)}
+                        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" 
+                        title="Edit Agent"
+                    >
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
                     </button>
                     <button 
@@ -186,6 +218,18 @@ const Agents = () => {
         <CreateAgentModal 
            onClose={() => setIsModalOpen(false)} 
            onCreated={handleAgentCreated}
+        />
+      )}
+
+      {/* Update Agent Modal */}
+      {showUpdateModal && selectedAgent && (
+        <UpdateAgentModal
+            agent={selectedAgent}
+            onClose={() => {
+                setShowUpdateModal(false);
+                setSelectedAgent(null);
+            }}
+            onUpdated={handleAgentUpdated}
         />
       )}
     </div>

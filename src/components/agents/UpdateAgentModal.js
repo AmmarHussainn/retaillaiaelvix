@@ -4,14 +4,14 @@ import agentService from '../../services/agentService';
 import llmService from '../../services/llmService';
 import knowledgeBaseService from '../../services/knowledgeBaseService';
 
-const CreateAgentModal = ({ onClose, onCreated }) => {
+const UpdateAgentModal = ({ agent, onClose, onUpdated }) => {
   const [formData, setFormData] = useState({
     agent_name: '',
     response_engine: {
       type: 'retell-llm',
       llm_id: ''
     },
-    voice_id: '11labs-Adrian',
+    voice_id: '',
     voice_model: 'eleven_turbo_v2_5',
     knowledge_base_ids: [],
     enable_backchannel: true,
@@ -32,7 +32,7 @@ const CreateAgentModal = ({ onClose, onCreated }) => {
   const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // Fetch LLMs and KBs on mount
+  // Fetch dependencies and populate form on mount
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -42,15 +42,39 @@ const CreateAgentModal = ({ onClose, onCreated }) => {
         ]);
         setLlms(Array.isArray(llmsData) ? llmsData : []);
         setKbs(Array.isArray(kbsData) ? kbsData : []);
+
+        if (agent) {
+             setFormData({
+                agent_name: agent.agent_name || '',
+                response_engine: {
+                    type: 'retell-llm',
+                    llm_id: agent.response_engine?.llm_id || ''
+                },
+                voice_id: agent.voice_id || '11labs-Adrian',
+                voice_model: agent.voice_model || 'eleven_turbo_v2_5',
+                knowledge_base_ids: agent.knowledge_base_ids || [],
+                enable_backchannel: agent.enable_backchannel ?? true,
+                backchannel_frequency: agent.backchannel_frequency ?? 0.8,
+                ambient_sound: agent.ambient_sound || 'null',
+                ambient_sound_volume: agent.ambient_sound_volume ?? 0.5,
+                responsiveness: agent.responsiveness ?? 1.0,
+                interruption_sensitivity: agent.interruption_sensitivity ?? 1.0,
+                voice_speed: agent.voice_speed ?? 1.0,
+                volume: agent.volume ?? 1.0,
+                voice_temperature: agent.voice_temperature ?? 1.0,
+                language: agent.language || 'en-US',
+             });
+        }
+
       } catch (err) {
         console.error('Error fetching dependencies:', err);
-        setError('Failed to load required data (LLMs or Knowledge Bases).');
+        setError('Failed to load required data.');
       } finally {
         setInitialLoading(false);
       }
     };
     fetchData();
-  }, []);
+  }, [agent]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -86,7 +110,6 @@ const CreateAgentModal = ({ onClose, onCreated }) => {
     setError('');
 
     try {
-      // Construct strict payload for Retell API
       const payload = {
         agent_name: formData.agent_name,
         response_engine: {
@@ -106,17 +129,22 @@ const CreateAgentModal = ({ onClose, onCreated }) => {
         knowledge_base_ids: formData.knowledge_base_ids
       };
 
-      // Handle ambient sound - remove if 'null' or empty
       if (formData.ambient_sound && formData.ambient_sound !== 'null') {
         payload.ambient_sound = formData.ambient_sound;
         payload.ambient_sound_volume = formData.ambient_sound_volume;
+      } else {
+        // Explicitly clear ambient sound if set to none/null if backend supports nulling
+         // or just send null if that's how to clear it.
+         // payload.ambient_sound = null; // Risky if backend strict validation
       }
-
-      const newAgent = await agentService.createAgent(payload);
-      onCreated(newAgent);
+      
+      const agentId = agent.agent_id || agent._id; // Prefer agent_id via Retell convention
+      const updatedAgent = await agentService.updateAgent(agentId, payload);
+      onUpdated(updatedAgent);
+      onClose();
     } catch (err) {
-      console.error('Failed to create agent:', err);
-      setError(err.response?.data?.message || 'Failed to create agent. Please try again.');
+      console.error('Failed to update agent:', err);
+      setError(err.response?.data?.message || 'Failed to update agent.');
     } finally {
       setLoading(false);
     }
@@ -127,7 +155,7 @@ const CreateAgentModal = ({ onClose, onCreated }) => {
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div className="bg-white p-6 rounded-lg shadow-xl">
            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-           <p className="mt-4 text-gray-600">Loading configuration data...</p>
+           <p className="mt-4 text-gray-600">Loading agent data...</p>
         </div>
       </div>
     );
@@ -138,8 +166,8 @@ const CreateAgentModal = ({ onClose, onCreated }) => {
       <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl">
         <div className="flex justify-between items-center p-6 border-b border-gray-200">
           <div>
-            <h2 className="text-xl font-bold text-gray-900">Create New Agent</h2>
-            <p className="text-sm text-gray-500">Configure your voice agent's brain and personality</p>
+            <h2 className="text-xl font-bold text-gray-900">Update Agent</h2>
+            <p className="text-sm text-gray-500">Modify your voice agent configuration</p>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
             <X className="w-6 h-6" />
@@ -179,7 +207,6 @@ const CreateAgentModal = ({ onClose, onCreated }) => {
               >
                 <option value="">-- Select an LLM Configuration --</option>
                 {llms.map(llm => {
-                  // Try to find the correct Retell ID field
                   const retellId = llm.llm_id || llm.retell_llm_id;
                   const value = (retellId && retellId.startsWith('llm_')) ? retellId : (llm._id || llm.id);
                   const isRetellId = value && value.startsWith('llm_');
@@ -191,18 +218,10 @@ const CreateAgentModal = ({ onClose, onCreated }) => {
                   );
                 })}
               </select>
-              {llms.length === 0 && (
-                <p className="text-sm text-red-500 mt-2">No LLMs found. Please create an LLM first.</p>
-              )}
-              {formData.response_engine.llm_id && !formData.response_engine.llm_id.startsWith('llm_') && (
-                 <p className="text-xs text-amber-600 mt-1">
-                   Warning: Selected LLM doest not appear to have a valid Retell ID (should start with "llm_").
-                 </p>
-              )}
             </div>
 
             <div>
-               <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+               <label className="block text-sm   font-semibold text-gray-700 mb-2 flex items-center">
                 <Database className="w-4 h-4 mr-2 text-green-600" />
                 Knowledge Base (Optional)
               </label>
@@ -216,9 +235,9 @@ const CreateAgentModal = ({ onClose, onCreated }) => {
                         type="checkbox"
                         checked={formData.knowledge_base_ids.includes(kb._id || kb.id)}
                         onChange={() => handleKBToggle(kb._id || kb.id)}
-                        className="mr-3 h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                        className="mr-3 h-4 w-4 text-[#384152] rounded border-gray-300 focus:ring-blue-500"
                       />
-                      <span className="text-sm text-gray-700">{kb.knowledge_base_name || kb.name}</span>
+                      <span className="text-sm text-[#384152]">{kb.knowledge_base_name || kb.name}</span>
                     </label>
                   ))
                 )}
@@ -329,7 +348,7 @@ const CreateAgentModal = ({ onClose, onCreated }) => {
               disabled={loading}
               className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 shadow-lg shadow-blue-500/30 transition-all transform hover:-translate-y-0.5 disabled:opacity-50 disabled:transform-none"
             >
-              {loading ? 'Creating Agent...' : 'Create Agent'}
+              {loading ? 'Saving Changes...' : 'Save Changes'}
             </button>
           </div>
 
@@ -345,4 +364,4 @@ const CreateAgentModal = ({ onClose, onCreated }) => {
   );
 };
 
-export default CreateAgentModal;
+export default UpdateAgentModal;
