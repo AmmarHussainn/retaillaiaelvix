@@ -3,6 +3,7 @@ import { Phone, User, Link as LinkIcon, Unlink, Globe, Plus, Trash2, Edit } from
 import { phoneNumberService } from '../services/phoneNumberService';
 import agentService from '../services/agentService';
 import CreatePhoneNumberModal from '../components/phone/CreatePhoneNumberModal';
+import ConfirmationModal from '../components/ui/ConfirmationModal';
 import { useToast } from '../context/ToastContext';
 
 const PhoneNumbers = () => {
@@ -16,6 +17,17 @@ const PhoneNumbers = () => {
   // State for assignment
   const [assigningId, setAssigningId] = useState(null); // This will hold the phone_number string
   const [selectedAgentId, setSelectedAgentId] = useState('');
+
+  // Confirmation Modal
+  const [confirmationModal, setConfirmationModal] = useState({
+    isOpen: false,
+    type: null, // 'release' | 'delete'
+    data: null, // phone number string or object
+    title: '',
+    message: '',
+    confirmText: '',
+    isDestructive: false
+  });
 
   useEffect(() => {
     fetchData();
@@ -67,31 +79,52 @@ const PhoneNumbers = () => {
     }
   };
 
-  const handleRelease = async (phoneNumber) => {
-    if (!window.confirm('Are you sure you want to release this number from the agent?')) return;
-    try {
-      // Release by setting inbound_agent_id to null
-      await phoneNumberService.updatePhoneNumber(phoneNumber, { inbound_agent_id: null });
-      
-      setPhoneNumbers(phoneNumbers.map(p => 
-        p.phone_number === phoneNumber ? { ...p, inbound_agent_id: null } : p
-      ));
-      toast.success('Number released');
-    } catch (err) {
-      console.error('Release error:', err);
-      toast.error('Failed to release number');
-    }
+  const initRelease = (phoneNumber) => {
+    setConfirmationModal({
+      isOpen: true,
+      type: 'release',
+      data: phoneNumber,
+      title: 'Release Phone Number',
+      message: 'Are you sure you want to release this number from the agent?',
+      confirmText: 'Release Number',
+      isDestructive: true
+    });
   };
 
-  const handleDelete = async (phoneNumber) => {
-    if (!window.confirm('Delete this phone number? This cannot be undone.')) return;
+  const initDelete = (phoneNumber) => {
+    setConfirmationModal({
+      isOpen: true,
+      type: 'delete',
+      data: phoneNumber,
+      title: 'Delete Phone Number',
+      message: 'Delete this phone number? This action signals you are releasing the number fully and cannot be undone.',
+      confirmText: 'Delete Number',
+      isDestructive: true
+    });
+  };
+
+  const handleConfirmAction = async () => {
+    const { type, data: phoneNumber } = confirmationModal;
+    if (!phoneNumber) return;
+
     try {
-      await phoneNumberService.deletePhoneNumber(phoneNumber);
-      setPhoneNumbers(phoneNumbers.filter(p => p.phone_number !== phoneNumber));
-      toast.success('Phone number deleted');
+      if (type === 'release') {
+        // Release by setting inbound_agent_id to null
+        await phoneNumberService.updatePhoneNumber(phoneNumber, { inbound_agent_id: null });
+        setPhoneNumbers(phoneNumbers.map(p => 
+          p.phone_number === phoneNumber ? { ...p, inbound_agent_id: null } : p
+        ));
+        toast.success('Number released');
+      } else if (type === 'delete') {
+        await phoneNumberService.deletePhoneNumber(phoneNumber);
+        setPhoneNumbers(phoneNumbers.filter(p => p.phone_number !== phoneNumber));
+        toast.success('Phone number deleted');
+      }
     } catch (err) {
-      console.error('Delete error:', err);
-      toast.error('Failed to delete number');
+      console.error(`${type} error:`, err);
+      toast.error(`Failed to ${type} number`);
+    } finally {
+      setConfirmationModal(prev => ({ ...prev, isOpen: false }));
     }
   };
 
@@ -156,9 +189,9 @@ const PhoneNumbers = () => {
                         {isAssigned ? 'Active' : 'Unassigned'}
                       </div>
                       <button 
-                        onClick={() => handleDelete(num.phone_number)}
+                        onClick={() => initDelete(num.phone_number)}
                         className="p-1 text-gray-300 hover:text-red-600 transition-colors"
-                        title="Release Number"
+                        title="Delete Number"
                       >
                          <Trash2 className="w-4 h-4" />
                       </button>
@@ -182,7 +215,7 @@ const PhoneNumbers = () => {
                              <select 
                                className="block w-full pl-2 pr-8 py-1.5 text-sm border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
                                value={selectedAgentId}
-                               // Use Retell agent_id (which might be in _id or agent_id field of agent object)
+                               // Use Retell agent_id
                                onChange={(e) => setSelectedAgentId(e.target.value)}
                              >
                                 <option value="">Select Agent...</option>
@@ -212,7 +245,7 @@ const PhoneNumbers = () => {
                                 {isAssigned ? agentName : 'No agent assigned'}
                               </span>
                               {isAssigned ? (
-                                <button onClick={() => handleRelease(num.phone_number)} className="text-red-500 hover:text-red-700 text-xs font-medium">Unassign</button>
+                                <button onClick={() => initRelease(num.phone_number)} className="text-red-500 hover:text-red-700 text-xs font-medium">Unassign</button>
                               ) : (
                                 <button 
                                   onClick={() => {
@@ -247,6 +280,16 @@ const PhoneNumbers = () => {
           onSuccess={handleCreated}
         />
       )}
+
+      <ConfirmationModal
+        isOpen={confirmationModal.isOpen}
+        onClose={() => setConfirmationModal(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={handleConfirmAction}
+        title={confirmationModal.title}
+        message={confirmationModal.message}
+        confirmText={confirmationModal.confirmText}
+        isDestructive={confirmationModal.isDestructive}
+      />
     </div>
   );
 };

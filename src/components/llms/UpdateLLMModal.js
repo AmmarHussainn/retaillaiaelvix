@@ -28,7 +28,7 @@ const UpdateLLMModal = ({ llm, onClose, onSuccess }) => {
 
   const availableTools = [
     { name: 'end_call', description: 'End the call' },
-    { name: 'transfer_call', description: 'Transfer the call' },
+    // { name: 'transfer_call', description: 'Transfer the call' },
   ];
 
   const handleChange = (e) => {

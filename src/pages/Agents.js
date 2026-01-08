@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, MoreVertical, Mic, Trash2 } from 'lucide-react';
+import { Plus, Search, MoreVertical, Mic, Trash2, Edit2 } from 'lucide-react';
 import agentService from '../services/agentService';
 import CreateAgentModal from '../components/agents/CreateAgentModal';
 import UpdateAgentModal from '../components/agents/UpdateAgentModal';
+import ConfirmationModal from '../components/ui/ConfirmationModal';
 import { useToast } from '../context/ToastContext';
 
 const Agents = () => {
@@ -11,6 +12,11 @@ const Agents = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState(null);
+  
+  // Confirmation Modal
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [agentToDelete, setAgentToDelete] = useState(null);
+
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const toast = useToast();
@@ -58,6 +64,26 @@ const Agents = () => {
       setShowUpdateModal(false);
       setSelectedAgent(null);
       toast.success('Agent updated successfully');
+  };
+  
+  const handleDeleteClick = (agent) => {
+      setAgentToDelete(agent);
+      setIsDeleteModalOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+      if (!agentToDelete) return;
+      try {
+        await agentService.deleteAgent(agentToDelete.agent_id);
+        setAgents(agents.filter(a => a.agent_id !== agentToDelete.agent_id));
+        toast.success('Agent deleted');
+      } catch(e) { 
+        console.error(e);
+        toast.error('Failed to delete agent'); 
+      } finally {
+          setIsDeleteModalOpen(false);
+          setAgentToDelete(null);
+      }
   };
 
   const filteredAgents = agents.filter(agent => 
@@ -185,21 +211,12 @@ const Agents = () => {
                         className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" 
                         title="Edit Agent"
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                        <Edit2 className="w-4 h-4" />
                     </button>
                     <button 
-                        onClick={async (e) => {
+                        onClick={(e) => {
                           e.stopPropagation();
-                          if(window.confirm('Delete this agent?')) {
-                            try {
-                              await agentService.deleteAgent(agent.agent_id);
-                              setAgents(agents.filter(a => a.agent_id !== agent.agent_id));
-                              toast.success('Agent deleted');
-                            } catch(e) { 
-                              console.error(e);
-                              toast.error('Failed to delete agent'); 
-                            }
-                          }
+                          handleDeleteClick(agent);
                         }}
                         className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" 
                         title="Delete Agent"
@@ -232,6 +249,16 @@ const Agents = () => {
             onUpdated={handleAgentUpdated}
         />
       )}
+
+      <ConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={handleConfirmDelete}
+        title="Delete Agent"
+        message="Are you sure you want to delete this agent? This action cannot be undone."
+        confirmText="Delete Agent"
+        isDestructive={true}
+      />
     </div>
   );
 };

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Search, FileText, Trash2, Database } from 'lucide-react';
 import knowledgeBaseService from '../services/knowledgeBaseService';
 import CreateKnowledgeModal from '../components/knowledge/CreateKnowledgeModal';
+import ConfirmationModal from '../components/ui/ConfirmationModal';
 import { useToast } from '../context/ToastContext';
 
 const KnowledgeBase = () => {
@@ -9,6 +10,11 @@ const KnowledgeBase = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [error, setError] = useState('');
+  
+  // Confirmation Modal
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [kbToDelete, setKbToDelete] = useState(null);
+
   const toast = useToast();
 
   useEffect(() => {
@@ -36,15 +42,23 @@ const KnowledgeBase = () => {
     toast.success('Knowledge Base created successfully');
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this knowledge base?')) return;
+  const handleDeleteClick = (id) => {
+    setKbToDelete(id);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!kbToDelete) return;
     try {
-      await knowledgeBaseService.deleteKnowledgeBase(id);
-      setKbs(kbs.filter(kb => kb.knowledge_base_id !== id));
+      await knowledgeBaseService.deleteKnowledgeBase(kbToDelete);
+      setKbs(kbs.filter(kb => kb.knowledge_base_id !== kbToDelete));
       toast.success('Knowledge Base deleted');
     } catch (err) {
       console.error('Error deleting KB:', err);
       toast.error('Failed to delete knowledge base');
+    } finally {
+      setIsDeleteModalOpen(false);
+      setKbToDelete(null);
     }
   };
 
@@ -102,7 +116,7 @@ const KnowledgeBase = () => {
                     {kb.status?.replace('_', ' ') || 'Unknown'}
                   </div>
                   <button 
-                    onClick={() => handleDelete(kb.knowledge_base_id)}
+                    onClick={() => handleDeleteClick(kb.knowledge_base_id)}
                     className="text-gray-300 group-hover:text-red-400 hover:!text-red-600 transition-colors p-1"
                     title="Delete Knowledge Base"
                   >
@@ -150,6 +164,16 @@ const KnowledgeBase = () => {
           onCreated={handleCreated}
         />
       )}
+
+      <ConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={handleConfirmDelete}
+        title="Delete Knowledge Base"
+        message="Are you sure you want to delete this knowledge base? This will remove all associated documents and cannot be undone."
+        confirmText="Delete Knowledge Base"
+        isDestructive={true}
+      />
     </div>
   );
 };

@@ -21,7 +21,7 @@ const CreateLLMModal = ({ onClose, onSuccess }) => {
 
   const availableTools = [
     { name: 'end_call', description: 'End the call' },
-    { name: 'transfer_call', description: 'Transfer the call' },
+    // { name: 'transfer_call', description: 'Transfer the call' },
     // Add more tools as needed or make this dynamic
   ];
 
