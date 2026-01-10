@@ -10,7 +10,7 @@ import llmService from '../services/llmService';
 import knowledgeBaseService from '../services/knowledgeBaseService';
 import { useToast } from '../context/ToastContext';
 import { 
-  X, Search, Sliders, ExternalLink, RefreshCw
+  X, Search, Sliders, ExternalLink, RefreshCw, Layers
 } from 'lucide-react';
 
 const LLMEditor = () => {
@@ -190,19 +190,145 @@ const LLMEditor = () => {
       if (payload.general_tools && payload.general_tools.length > 0) {
         payload.general_tools = payload.general_tools.map(tool => {
           const cleanTool = { ...tool };
-          if (cleanTool.type === 'transfer_call' && !cleanTool.transfer_destination) {
-            throw new Error(`Transfer call tool "${cleanTool.name}" requires a destination`);
+          
+          // Basic validation & Sanitization based on Retell OpenAPI Schema
+          if (cleanTool.type === 'transfer_call') {
+            if (!cleanTool.transfer_destination || typeof cleanTool.transfer_destination === 'string') {
+              cleanTool.transfer_destination = {
+                type: 'predefined',
+                number: cleanTool.transfer_destination || '+1234567890'
+              };
+            }
+            if (!cleanTool.transfer_option) {
+              cleanTool.transfer_option = {
+                type: 'cold_transfer',
+                show_transferee_as_caller: false
+              };
+            }
           }
-          if (cleanTool.type === 'custom' && !cleanTool.url) {
-            throw new Error(`Custom tool "${cleanTool.name}" requires a URL`);
+
+          if (cleanTool.type === 'agent_transfer') {
+            // AgentSwapTool in OpenAPI
+            if (!cleanTool.agent_id) cleanTool.agent_id = 'default_agent_id';
+            if (!cleanTool.post_call_analysis_setting) cleanTool.post_call_analysis_setting = 'both_agents';
           }
+
+          if (['check_availability_cal', 'book_appointment_cal'].includes(cleanTool.type)) {
+            if (!cleanTool.cal_api_key) cleanTool.cal_api_key = 'default_key';
+            if (!cleanTool.event_type_id) cleanTool.event_type_id = 12345;
+          }
+
+          if (cleanTool.type === 'send_sms') {
+            if (!cleanTool.sms_content || typeof cleanTool.sms_content === 'string') {
+              cleanTool.sms_content = {
+                type: 'predefined',
+                content: cleanTool.sms_content || 'Default SMS content'
+              };
+            }
+          }
+
+          if (cleanTool.type === 'extract_dynamic_variable') {
+            if (!cleanTool.variables) cleanTool.variables = [];
+            // AnalysisData in OpenAPI
+          }
+
+          if (cleanTool.type === 'custom') {
+            if (!cleanTool.url) throw new Error(`Custom tool "${cleanTool.name}" requires a URL`);
+            if (!cleanTool.description) throw new Error(`Custom tool "${cleanTool.name}" requires a description`);
+            
+            // speak_after_execution is required in OpenAPI
+            if (cleanTool.speak_after_execution === undefined) {
+              cleanTool.speak_after_execution = true;
+            }
+
+            // Ensure URL has a protocol to avoid "Invalid hostname"
+            if (cleanTool.url && !cleanTool.url.startsWith('http')) {
+              cleanTool.url = 'https://' + cleanTool.url;
+            }
+
+            // 1. Convert parameters (JSON string) to Object
+            if (typeof cleanTool.parameters === 'string' && cleanTool.parameters.trim()) {
+              try {
+                const parsed = JSON.parse(cleanTool.parameters);
+                // Ensure the required structure exists within the object
+                cleanTool.parameters = {
+                  type: "object",
+                  properties: parsed.properties || parsed || {},
+                  required: Array.isArray(parsed.required) ? parsed.required : []
+                };
+              } catch (e) {
+                // If not valid JSON, we'll try to wrap it as a simple object if possible, 
+                // but usually better to error out.
+                throw new Error(`Invalid JSON in parameters for tool "${cleanTool.name}"`);
+              }
+            } else if (!cleanTool.parameters || (typeof cleanTool.parameters === 'object' && Object.keys(cleanTool.parameters).length === 0)) {
+              // Documentation says omitting is fine for empty param list
+              delete cleanTool.parameters;
+            } else if (typeof cleanTool.parameters === 'object') {
+              // Ensure it has required sub-fields if it's an object
+              cleanTool.parameters = {
+                type: "object",
+                properties: cleanTool.parameters.properties || {},
+                ...cleanTool.parameters
+              };
+            }
+
+            // 2. Convert headers/query_params arrays to objects
+            // Rename internal 'query_parameters' to API's 'query_params'
+            const qParams = cleanTool.query_params || cleanTool.query_parameters;
+            
+            if (Array.isArray(cleanTool.headers)) {
+              cleanTool.headers = cleanTool.headers.reduce((acc, curr) => {
+                if (curr.key && curr.key.trim()) acc[curr.key] = curr.value || '';
+                return acc;
+              }, {});
+            }
+            if (Array.isArray(qParams)) {
+              cleanTool.query_params = qParams.reduce((acc, curr) => {
+                if (curr.key && curr.key.trim()) acc[curr.key] = curr.value || '';
+                return acc;
+              }, {});
+              delete cleanTool.query_parameters; // Remove internal key
+            }
+
+            // 3. Convert response_variables array to object (key -> path)
+            if (Array.isArray(cleanTool.response_variables)) {
+              cleanTool.response_variables = cleanTool.response_variables.reduce((acc, curr) => {
+                if (curr.key && curr.key.trim()) acc[curr.key] = curr.value || '';
+                return acc;
+              }, {});
+            }
+
+            // Optional fields cleaning
+            if (!cleanTool.headers || Object.keys(cleanTool.headers).length === 0) delete cleanTool.headers;
+            if (!cleanTool.query_params || Object.keys(cleanTool.query_params).length === 0) delete cleanTool.query_params;
+            if (!cleanTool.response_variables || Object.keys(cleanTool.response_variables).length === 0) delete cleanTool.response_variables;
+          }
+
+          // Clean up empty fields to avoid validation noise
+          Object.keys(cleanTool).forEach(key => {
+            if (cleanTool[key] === null || cleanTool[key] === undefined || cleanTool[key] === '') {
+              // Only delete if it's not a root required field or if it's safe to omit
+              if (key !== 'name' && key !== 'type') {
+                 delete cleanTool[key];
+              }
+            }
+          });
+
           return cleanTool;
         });
       } else {
         delete payload.general_tools;
       }
 
-      if (payload.knowledge_base_ids.length === 0) delete payload.knowledge_base_ids;
+      // Remove non-RetellLLM fields that might have been added to UI
+      delete payload.webhook_url;
+      delete payload.webhook_timeout_ms;
+      delete payload.post_call_analysis_data;
+      delete payload.post_call_analysis_model;
+      delete payload.name; // Retell LLM creation doesn't use 'name' in payload, only LLM ID is used for updates
+
+      if (payload.knowledge_base_ids && payload.knowledge_base_ids.length === 0) delete payload.knowledge_base_ids;
       if (Object.keys(payload.default_dynamic_variables).length === 0) delete payload.default_dynamic_variables;
       if (payload.mcps.length === 0) delete payload.mcps;
       
@@ -490,25 +616,53 @@ const LLMEditor = () => {
                             { label: 'Agent Transfer', icon: Mic, type: 'agent_transfer' },
                             { label: 'Check Calendar Availability (Cal.com)', icon: Database, type: 'check_availability_cal' },
                             { label: 'Book on the Calendar (Cal.com)', icon: Database, type: 'book_appointment_cal' },
-                            { label: 'Press Digit (IVR Navigation)', icon: Database, type: 'press_digit' },
+                            { label: 'Press Digit (IVR Navigation)', icon: LayoutDashboard, type: 'press_digit' },
                             { label: 'Send SMS', icon: MessageSquare, type: 'send_sms' },
-                            { label: 'Extract Dynamic Variable', icon: Database, type: 'extract_dynamic_variable' },
+                            { label: 'Extract Dynamic Variable', icon: Layers, type: 'extract_dynamic_variable' },
                             { label: 'Custom Function', icon: Wrench, type: 'custom' }
                           ].map((type) => (
                             <button
                               key={type.type}
                               onClick={() => {
-                                const name = prompt(`Enter function name:`);
-                                if (name) {
-                                  setFormData(prev => ({
-                                    ...prev,
-                                    general_tools: [...prev.general_tools, { 
-                                      name: name.toLowerCase().replace(/\s+/g, '_'), 
-                                      type: type.type,
-                                      description: `Function for ${name}`
-                                    }]
-                                  }));
+                                const tempId = `tool_${Date.now()}`;
+                                const baseTool = {
+                                  name: type.label.toLowerCase().replace(/\s+/g, '_'), 
+                                  type: type.type,
+                                  description: `Function for ${type.label}`
+                                };
+
+                                // Advanced fields for custom tools
+                                if (type.type === 'custom') {
+                                  Object.assign(baseTool, {
+                                    method: 'POST',
+                                    url: '',
+                                    timeout_ms: 120000,
+                                    headers: [],
+                                    query_parameters: [],
+                                    parameters: JSON.stringify({
+                                      properties: {}
+                                    }, null, 2),
+                                    response_variables: [],
+                                    speak_during_execution: false,
+                                    speak_after_execution: true,
+                                    description: `Custom function for ${type.label}`
+                                  });
                                 }
+
+                                setFormData(prev => {
+                                  const updatedTools = [...prev.general_tools, baseTool];
+                                  const newIndex = updatedTools.length - 1;
+                                  
+                                  // Auto-open modal after adding
+                                  setTimeout(() => {
+                                    setActiveConfigTool({ ...baseTool, index: newIndex });
+                                  }, 0);
+
+                                  return {
+                                    ...prev,
+                                    general_tools: updatedTools
+                                  };
+                                });
                                 setFunctionsDropdownOpen(false);
                               }}
                               className="w-full text-left px-5 py-2.5 hover:bg-gray-50 flex items-center space-x-4 transition-colors group"
@@ -955,7 +1109,7 @@ const LLMEditor = () => {
       {activeConfigTool && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setActiveConfigTool(null)}></div>
-          <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-xl z-10 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+          <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-2xl z-10 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             {/* Header */}
             <div className="px-8 py-6 border-b border-gray-100 flex items-center justify-between">
               <div className="flex items-center space-x-4">
@@ -964,9 +1118,12 @@ const LLMEditor = () => {
                 </div>
                 <div>
                   <h3 className="text-xl font-bold text-gray-900">
-                    {activeConfigTool.type === 'extract_dynamic_variable' ? 'Extract Dynamic Variable' : 'Configure Tool'}
+                    {activeConfigTool.type === 'extract_dynamic_variable' ? 'Extract Dynamic Variable' : 
+                     activeConfigTool.type === 'custom' ? 'Custom Function' : 'Configure Tool'}
                   </h3>
-                  <p className="text-xs text-gray-500 font-medium">Extract variables so they can be used in subsequent dialogue steps.</p>
+                  <p className="text-xs text-gray-500 font-medium">
+                    {activeConfigTool.type === 'custom' ? 'Connect to external APIs and services.' : 'Configure the behavior of this tool.'}
+                  </p>
                 </div>
               </div>
               <button 
@@ -978,26 +1135,257 @@ const LLMEditor = () => {
             </div>
 
             {/* Body */}
-            <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto">
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-gray-900">Function Name</label>
-                <input 
-                  value={activeConfigTool.name}
-                  onChange={(e) => setActiveConfigTool({ ...activeConfigTool, name: e.target.value })}
-                  className="w-full px-5 py-3.5 bg-gray-50/50 border border-gray-200 rounded-2xl text-[15px] font-medium outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all placeholder:text-gray-300"
-                  placeholder="e.g. extract_user_details"
-                />
+            <div className="p-8 space-y-6 max-h-[75vh] overflow-y-auto custom-scrollbar">
+              {/* Common Fields: Name & Description */}
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-gray-900 uppercase tracking-wider ml-1">Name</label>
+                  <input 
+                    value={activeConfigTool.name}
+                    onChange={(e) => setActiveConfigTool({ ...activeConfigTool, name: e.target.value })}
+                    className="w-full px-5 py-3.5 bg-gray-50 rounded-2xl text-[15px] font-medium outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-200 transition-all border border-gray-100"
+                    placeholder="Enter function name"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-gray-900 uppercase tracking-wider ml-1">Description</label>
+                  <textarea 
+                    value={activeConfigTool.description}
+                    onChange={(e) => setActiveConfigTool({ ...activeConfigTool, description: e.target.value })}
+                    className="w-full px-5 py-3.5 bg-gray-50 rounded-2xl text-[15px] font-medium outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-200 transition-all border border-gray-100 min-h-[80px] resize-none"
+                    placeholder="Enter the description"
+                  />
+                </div>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-gray-900">Description</label>
-                <textarea 
-                  value={activeConfigTool.description}
-                  onChange={(e) => setActiveConfigTool({ ...activeConfigTool, description: e.target.value })}
-                  className="w-full px-5 py-3.5 bg-gray-50/50 border border-gray-200 rounded-2xl text-[15px] font-medium outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all placeholder:text-gray-300 min-h-[100px] resize-none"
-                  placeholder="e.g. Extract the user's details like name, email, age, etc. from the conversation"
-                />
-              </div>
+              {activeConfigTool.type === 'custom' && (
+                <div className="space-y-8 pt-4">
+                  {/* API Endpoint */}
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-xs font-bold text-gray-900 uppercase tracking-wider ml-1">API Endpoint</label>
+                      <p className="text-[11px] text-gray-500 font-medium ml-1">The API Endpoint is the address of the service you are connecting to</p>
+                    </div>
+                    <div className="flex space-x-2">
+                      <select 
+                        value={activeConfigTool.method || 'POST'}
+                        onChange={(e) => setActiveConfigTool({ ...activeConfigTool, method: e.target.value })}
+                        className="w-28 px-4 py-3.5 bg-gray-50 rounded-2xl text-[15px] font-bold outline-none border border-gray-100"
+                      >
+                        <option value="POST">POST</option>
+                        <option value="GET">GET</option>
+                        <option value="PUT">PUT</option>
+                        <option value="DELETE">DELETE</option>
+                      </select>
+                      <input 
+                        value={activeConfigTool.url || ''}
+                        onChange={(e) => setActiveConfigTool({ ...activeConfigTool, url: e.target.value })}
+                        className="flex-1 px-5 py-3.5 bg-gray-50 rounded-2xl text-[15px] font-medium outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-200 transition-all border border-gray-100"
+                        placeholder="Enter the URL of the custom function"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Timeout */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-gray-900 uppercase tracking-wider ml-1">Timeout (ms)</label>
+                    <div className="flex items-center space-x-3 bg-gray-50 border border-gray-100 rounded-2xl p-1">
+                      <input 
+                        type="number"
+                        value={activeConfigTool.timeout_ms || 120000}
+                        onChange={(e) => setActiveConfigTool({ ...activeConfigTool, timeout_ms: Number(e.target.value) })}
+                        className="flex-1 px-5 py-2.5 bg-transparent text-[15px] font-medium outline-none"
+                      />
+                      <span className="text-[13px] font-bold text-gray-400 border-l border-gray-200 pl-4 py-2 pr-4">milliseconds</span>
+                    </div>
+                  </div>
+
+                  {/* Headers & Query Params */}
+                  {['headers', 'query_parameters'].map((key) => (
+                    <div key={key} className="space-y-3">
+                      <div>
+                        <label className="text-xs font-bold text-gray-900 uppercase tracking-wider ml-1">
+                          {key === 'headers' ? 'Headers' : 'Query Parameters'}
+                        </label>
+                        <p className="text-[11px] text-gray-500 font-medium ml-1">
+                          {key === 'headers' ? 'Specify the HTTP headers required for your API request.' : 'Query string parameters to append to the URL.'}
+                        </p>
+                      </div>
+                      <div className="space-y-2">
+                        {(activeConfigTool[key] || []).map((item, i) => (
+                          <div key={i} className="flex items-center space-x-2 animate-in slide-in-from-left-2 duration-200">
+                            <input 
+                              placeholder="Key"
+                              value={item.key}
+                              onChange={(e) => {
+                                const list = [...activeConfigTool[key]];
+                                list[i].key = e.target.value;
+                                setActiveConfigTool({ ...activeConfigTool, [key]: list });
+                              }}
+                              className="flex-1 px-4 py-2.5 bg-gray-100/50 border border-gray-200 rounded-xl text-sm outline-none"
+                            />
+                            <input 
+                              placeholder="Value"
+                              value={item.value}
+                              onChange={(e) => {
+                                const list = [...activeConfigTool[key]];
+                                list[i].value = e.target.value;
+                                setActiveConfigTool({ ...activeConfigTool, [key]: list });
+                              }}
+                              className="flex-1 px-4 py-2.5 bg-gray-100/50 border border-gray-200 rounded-xl text-sm outline-none"
+                            />
+                            <button 
+                              onClick={() => {
+                                const list = activeConfigTool[key].filter((_, idx) => idx !== i);
+                                setActiveConfigTool({ ...activeConfigTool, [key]: list });
+                              }}
+                              className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
+                        <button 
+                          onClick={() => {
+                            const list = [...(activeConfigTool[key] || []), { key: '', value: '' }];
+                            setActiveConfigTool({ ...activeConfigTool, [key]: list });
+                          }}
+                          className="flex items-center space-x-2 text-gray-900 hover:text-blue-600 bg-white border border-gray-200 px-4 py-2 rounded-xl font-bold text-sm transition-all"
+                        >
+                          <Plus className="w-4 h-4" />
+                          <span>New key value pair</span>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Parameters (Optional) */}
+                  <div className="space-y-3">
+                    <div className="flex flex-col space-y-1">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-gray-900 uppercase tracking-wider ml-1">Parameters (Optional)</label>
+                        <div className="flex bg-gray-100 p-1 rounded-xl">
+                          <button className="px-3 py-1 bg-white rounded-lg text-[11px] font-bold shadow-sm">JSON</button>
+                          <button className="px-3 py-1 text-[11px] font-bold text-gray-500 hover:text-gray-900 transition-colors">Form</button>
+                        </div>
+                      </div>
+                      <p className="text-[11px] text-gray-500 font-medium ml-1">JSON schema that defines the format in which the LLM will return. Please refer to the <span className="text-blue-500 cursor-pointer underline">docs</span>.</p>
+                    </div>
+                    <div className="relative group">
+                      <textarea 
+                        value={activeConfigTool.parameters || ''}
+                        onChange={(e) => setActiveConfigTool({ ...activeConfigTool, parameters: e.target.value })}
+                        className="w-full px-5 py-4 bg-[#1e293b] text-gray-100 rounded-2xl text-[13px] font-mono outline-none min-h-[200px] shadow-inner"
+                        placeholder="Enter JSON Schema here..."
+                      />
+                      <div className="absolute bottom-4 right-4 flex space-x-2">
+                        <button className="px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-[11px] font-bold text-white transition-all">example 1</button>
+                        <button className="px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-[11px] font-bold text-white transition-all">example 2</button>
+                        <button className="px-12 py-2 bg-white text-gray-900 rounded-xl text-xs font-bold hover:bg-gray-50 transition-all shadow-sm">Format JSON</button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Response Variables */}
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-xs font-bold text-gray-900 uppercase tracking-wider ml-1">Response Variables</label>
+                      <p className="text-[11px] text-gray-500 font-medium ml-1">Extracted values from API response saved as dynamic variables.</p>
+                    </div>
+                    <div className="space-y-2">
+                      {(activeConfigTool.response_variables || []).map((item, i) => (
+                        <div key={i} className="flex items-center space-x-2 animate-in slide-in-from-left-2 duration-200">
+                          <input 
+                            placeholder="Variable Name"
+                            value={item.key}
+                            onChange={(e) => {
+                              const list = [...activeConfigTool.response_variables];
+                              list[i].key = e.target.value;
+                              setActiveConfigTool({ ...activeConfigTool, response_variables: list });
+                            }}
+                            className="flex-1 px-4 py-2.5 bg-gray-100/50 border border-gray-200 rounded-xl text-sm outline-none"
+                          />
+                          <input 
+                            placeholder="JSON Path or Value"
+                            value={item.value}
+                            onChange={(e) => {
+                              const list = [...activeConfigTool.response_variables];
+                              list[i].value = e.target.value;
+                              setActiveConfigTool({ ...activeConfigTool, response_variables: list });
+                            }}
+                            className="flex-1 px-4 py-2.5 bg-gray-100/50 border border-gray-200 rounded-xl text-sm outline-none"
+                          />
+                          <button 
+                            onClick={() => {
+                              const list = activeConfigTool.response_variables.filter((_, idx) => idx !== i);
+                              setActiveConfigTool({ ...activeConfigTool, response_variables: list });
+                            }}
+                            className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                      <button 
+                        onClick={() => {
+                          const list = [...(activeConfigTool.response_variables || []), { key: '', value: '' }];
+                          setActiveConfigTool({ ...activeConfigTool, response_variables: list });
+                        }}
+                        className="flex items-center space-x-2 text-gray-900 hover:text-blue-600 bg-white border border-gray-200 px-4 py-2 rounded-xl font-bold text-sm transition-all"
+                      >
+                        <Plus className="w-4 h-4" />
+                        <span>New key value pair</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Speech Toggles */}
+                  <div className="space-y-4 pt-4 border-t border-gray-100">
+                    <div className="flex items-center space-x-3">
+                      <input 
+                        type="checkbox"
+                        id="speak_during"
+                        checked={activeConfigTool.speak_during_execution || false}
+                        onChange={(e) => setActiveConfigTool({ ...activeConfigTool, speak_during_execution: e.target.checked })}
+                        className="w-5 h-5 accent-gray-900 rounded-lg cursor-pointer"
+                      />
+                      <label htmlFor="speak_during" className="flex-1 cursor-pointer">
+                        <p className="text-sm font-bold text-gray-900">Speak During Execution</p>
+                        <p className="text-[11px] text-gray-500 font-medium">If the function takes over 2 seconds, the agent can say something like: "Let me check that for you."</p>
+                      </label>
+                    </div>
+
+                    <div className="flex items-center space-x-3">
+                      <input 
+                        type="checkbox"
+                        id="args_at_root"
+                        checked={activeConfigTool.args_at_root || false}
+                        onChange={(e) => setActiveConfigTool({ ...activeConfigTool, args_at_root: e.target.checked })}
+                        className="w-5 h-5 accent-gray-900 rounded-lg cursor-pointer"
+                      />
+                      <label htmlFor="args_at_root" className="flex-1 cursor-pointer">
+                        <p className="text-sm font-bold text-gray-900">Arguments at Root</p>
+                        <p className="text-[11px] text-gray-500 font-medium">If enabled, parameters will be passed as a root-level JSON object instead of nested under "args".</p>
+                      </label>
+                    </div>
+
+                    <div className="flex items-center space-x-3">
+                      <input 
+                        type="checkbox"
+                        id="speak_after"
+                        checked={activeConfigTool.speak_after_execution || false}
+                        onChange={(e) => setActiveConfigTool({ ...activeConfigTool, speak_after_execution: e.target.checked })}
+                        className="w-5 h-5 accent-gray-900 rounded-lg cursor-pointer"
+                      />
+                      <label htmlFor="speak_after" className="flex-1 cursor-pointer">
+                        <p className="text-sm font-bold text-gray-900">Speak After Execution</p>
+                        <p className="text-[11px] text-gray-500 font-medium">Unselect if you want to run the function silently, such as uploading the call result to the server silently.</p>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {activeConfigTool.type === 'extract_dynamic_variable' && (
                 <div className="space-y-4">
