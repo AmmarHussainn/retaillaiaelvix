@@ -34,6 +34,10 @@ const LLMEditor = () => {
   const [kbSettingsOpen, setKbSettingsOpen] = useState(false);
   const [postCallDropdownOpen, setPostCallDropdownOpen] = useState(false);
   const [tempKbConfig, setTempKbConfig] = useState({ top_k: 3, filter_score: 0.6 });
+  const [activeConfigTool, setActiveConfigTool] = useState(null); // For tool config modals
+  const [isVarModalOpen, setIsVarModalOpen] = useState(false); // For sub-modal in dynamic variables
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [functionsDropdownOpen, setFunctionsDropdownOpen] = useState(false);
 
   const [formData, setFormData] = useState({
     model: 'gpt-4.1',
@@ -61,7 +65,8 @@ const LLMEditor = () => {
     ],
     post_call_analysis_model: 'gpt-4.1-mini',
     webhook_url: '',
-    webhook_timeout_ms: 5000
+    webhook_timeout_ms: 5000,
+    name: 'New Response Engine'
   });
 
   const fetchLLM = useCallback(async () => {
@@ -171,16 +176,17 @@ const LLMEditor = () => {
     try {
       const payload = { ...formData };
       
-      // Sanitization
-      if (!payload.s2s_model) delete payload.s2s_model;
-      if (payload.states && payload.states.length > 0) {
-        if (!payload.starting_state || !payload.states.some(s => s.name === payload.starting_state)) {
-          payload.starting_state = payload.states[0].name;
-        }
+      // Ensure mutual exclusivity of model and s2s_model
+      if (payload.s2s_model) {
+        delete payload.model;
       } else {
-        delete payload.states;
-        delete payload.starting_state;
+        delete payload.s2s_model;
       }
+
+      // Remove states (as requested to remove Conversation Flow)
+      delete payload.states;
+      delete payload.starting_state;
+
       if (payload.general_tools && payload.general_tools.length > 0) {
         payload.general_tools = payload.general_tools.map(tool => {
           const cleanTool = { ...tool };
@@ -241,9 +247,27 @@ const LLMEditor = () => {
             <ArrowLeft className="w-5 h-5 text-gray-600" />
           </button>
           <div className="flex flex-col">
-            <h1 className="text-xl font-bold text-gray-900 flex items-center">
-              {isEditMode ? 'Law Firm Agent' : 'New Response Engine'}
-              <Edit2 className="w-4 h-4 ml-2 text-gray-400 cursor-pointer" />
+            <h1 className="text-xl font-bold text-gray-900 flex items-center group">
+              {isEditingName ? (
+                <input
+                  autoFocus
+                  value={formData.name}
+                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                  onBlur={() => setIsEditingName(false)}
+                  onKeyDown={(e) => e.key === 'Enter' && setIsEditingName(false)}
+                  className="bg-gray-50 border-b-2 border-blue-500 outline-none px-1 rounded-t-sm"
+                />
+              ) : (
+                <>
+                  <span onClick={() => setIsEditingName(true)} className="cursor-pointer hover:text-blue-600 transition-colors">
+                    {formData.name}
+                  </span>
+                  <Edit2 
+                    className="w-4 h-4 ml-2 text-gray-400 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity hover:text-blue-500" 
+                    onClick={() => setIsEditingName(true)}
+                  />
+                </>
+              )}
             </h1>
             {isEditMode && (
               <div className="flex items-center space-x-3 text-[11px] text-gray-500 font-medium">
@@ -348,29 +372,48 @@ const LLMEditor = () => {
                </div>
                
                <div className="grid grid-cols-2 gap-4">
-                 <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm hover:border-blue-200 transition-all cursor-pointer">
-                   <div className="flex items-center justify-between mb-2">
-                     <span className="text-sm font-bold text-gray-700">AI speaks first</span>
-                     <div className="w-4 h-4 rounded-full border-2 border-blue-500 flex items-center justify-center">
-                       <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                 <button 
+                   type="button"
+                   onClick={() => setFormData(prev => ({ ...prev, start_speaker: 'agent' }))}
+                   className={`p-6 rounded-[28px] border-2 transition-all text-left relative outline-none ${
+                     formData.start_speaker === 'agent' 
+                     ? 'border-blue-500 bg-blue-50/30 shadow-sm' 
+                     : 'border-gray-100 bg-white hover:border-blue-100 shadow-sm'
+                   }`}
+                 >
+                   <div className="flex justify-between items-start mb-4">
+                     <h4 className={`font-bold text-[15px] ${formData.start_speaker === 'agent' ? 'text-blue-600' : 'text-gray-900'}`}>AI speaks first</h4>
+                     <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${formData.start_speaker === 'agent' ? 'border-blue-500 bg-blue-500' : 'border-gray-100'}`}>
+                       {formData.start_speaker === 'agent' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
                      </div>
                    </div>
                    <textarea 
-                    name="begin_message"
-                    value={formData.begin_message}
-                    onChange={handleInputChange}
-                    className="w-full bg-gray-50 border border-gray-100 rounded-xl p-3 text-sm text-gray-600 outline-none"
-                    placeholder="Enter welcome message..."
+                     name="begin_message"
+                     value={formData.begin_message}
+                     onChange={handleInputChange}
+                     disabled={formData.start_speaker !== 'agent'}
+                     className={`w-full bg-white/50 border border-gray-100 rounded-2xl p-4 text-[13px] font-medium outline-none h-24 resize-none transition-all focus:bg-white focus:border-blue-100 placeholder:text-gray-300 ${formData.start_speaker !== 'agent' ? 'opacity-50' : ''}`}
+                     placeholder="e.g. Hello, how can I help you today?"
                    />
-                 </div>
-                 
-                 <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm hover:border-blue-200 transition-all cursor-pointer opacity-60">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-bold text-gray-700">User speaks first</span>
-                      <div className="w-4 h-4 rounded-full border-2 border-gray-300"></div>
-                    </div>
-                    <p className="text-xs text-gray-400">Agent will wait for user to speak before responding.</p>
-                 </div>
+                 </button>
+
+                 <button 
+                   type="button"
+                   onClick={() => setFormData(prev => ({ ...prev, start_speaker: 'user', begin_message: '' }))}
+                   className={`p-6 rounded-[28px] border-2 transition-all text-left relative outline-none ${
+                     formData.start_speaker === 'user' 
+                     ? 'border-blue-500 bg-blue-50/30 shadow-sm' 
+                     : 'border-gray-100 bg-white hover:border-blue-100 shadow-sm'
+                   }`}
+                 >
+                   <div className="flex justify-between items-start mb-4">
+                     <h4 className={`font-bold text-[15px] ${formData.start_speaker === 'user' ? 'text-blue-600' : 'text-gray-900'}`}>User speaks first</h4>
+                     <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${formData.start_speaker === 'user' ? 'border-blue-500 bg-blue-500' : 'border-gray-100'}`}>
+                       {formData.start_speaker === 'user' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                     </div>
+                   </div>
+                   <p className="text-[13px] text-gray-500 font-medium leading-relaxed mt-2">Agent will wait for user to speak before responding.</p>
+                 </button>
                </div>
             </div>
           </div>
@@ -380,7 +423,7 @@ const LLMEditor = () => {
         <div className="w-[400px] bg-white border-l border-gray-200 overflow-y-auto p-4 space-y-2">
           
           {/* Functions / Tools Section */}
-          <div className="border border-gray-100 rounded-2xl overflow-hidden">
+          <div className="border border-gray-100 rounded-2xl relative">
             <button 
               onClick={() => toggleSection('functions')}
               className="w-full flex items-center justify-between p-4 bg-gray-50/50 hover:bg-gray-50 transition-colors"
@@ -398,161 +441,96 @@ const LLMEditor = () => {
                 </p>
                 <div className="space-y-3">
                   {formData.general_tools.map((tool, idx) => (
-                    <div key={idx} className="p-3 bg-gray-50 rounded-xl border border-gray-100 group space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                          <Wrench className="w-3.5 h-3.5 text-gray-400" />
-                          <input 
-                            value={tool.name}
-                            onChange={(e) => handleUpdateTool(idx, 'name', e.target.value)}
-                            className="text-sm font-semibold text-gray-700 bg-transparent outline-none border-b border-transparent focus:border-blue-500 w-32"
-                          />
+                    <div key={idx} className="flex items-center justify-between p-3.5 bg-gray-50/50 rounded-2xl border border-gray-100 group hover:border-gray-200 transition-all">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center shadow-sm border border-gray-50">
+                          {tool.type === 'end_call' && <Mic className="w-4 h-4 text-gray-500" />}
+                          {tool.type === 'transfer_call' && <Headphones className="w-4 h-4 text-blue-500" />}
+                          {tool.type === 'press_digit' && <Database className="w-4 h-4 text-purple-500" />}
+                          {tool.type === 'custom' && <Wrench className="w-4 h-4 text-orange-500" />}
+                          {!['end_call', 'transfer_call', 'press_digit', 'custom'].includes(tool.type) && <Wrench className="w-4 h-4 text-gray-400" />}
                         </div>
-                        <button onClick={() => handleRemoveTool(idx)} className="p-1 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 className="w-4 h-4" /></button>
+                        <span className="text-[13px] font-bold text-gray-700">{tool.name}</span>
                       </div>
-                      <select 
-                        value={tool.type}
-                        onChange={(e) => handleUpdateTool(idx, 'type', e.target.value)}
-                        className="w-full bg-white border border-gray-100 rounded-lg p-1.5 text-xs outline-none"
-                      >
-                        <option value="end_call">End Call</option>
-                        <option value="transfer_call">Transfer Call</option>
-                        <option value="press_digit">Press Digit</option>
-                        <option value="custom">Custom Tool</option>
-                      </select>
-
-                      {tool.type === 'transfer_call' && (
-                        <input 
-                          value={tool.transfer_destination || ''}
-                          onChange={(e) => handleUpdateTool(idx, 'transfer_destination', e.target.value)}
-                          className="w-full bg-white border border-gray-100 rounded-lg p-2 text-xs outline-none"
-                          placeholder="Phone number (e.g. +1...)"
-                        />
-                      )}
-
-                      {(tool.type === 'custom') && (
-                        <input 
-                          value={tool.url || ''}
-                          onChange={(e) => handleUpdateTool(idx, 'url', e.target.value)}
-                          className="w-full bg-white border border-gray-100 rounded-lg p-2 text-xs outline-none"
-                          placeholder="Webhook URL"
-                        />
-                      )}
-
-                      <textarea 
-                        value={tool.description}
-                        onChange={(e) => handleUpdateTool(idx, 'description', e.target.value)}
-                        className="w-full bg-white border border-gray-100 rounded-lg p-2 text-xs outline-none resize-none"
-                        placeholder="Tool description..."
-                        rows={2}
-                      />
+                      <div className="flex items-center space-x-2">
+                        <button 
+                          onClick={() => {
+                            setActiveConfigTool({ ...tool, index: idx });
+                          }}
+                          className="p-1.5 text-gray-400 hover:text-gray-900 transition-colors"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={() => handleRemoveTool(idx)}
+                          className="p-1.5 text-gray-400 hover:text-red-500 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   ))}
-                  <button 
-                    onClick={handleAddTool}
-                    className="w-full py-2.5 px-4 bg-white border border-dashed border-gray-300 rounded-xl text-gray-500 text-sm font-bold flex items-center justify-center space-x-2 hover:border-blue-300 hover:text-blue-500 transition-all"
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span>Add Function</span>
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
+                  
+                  <div className="relative pt-2">
+                    <button 
+                      onClick={() => setFunctionsDropdownOpen(!functionsDropdownOpen)}
+                      className="flex items-center space-x-2 px-4 py-2 bg-white border border-gray-200 rounded-xl text-gray-700 hover:bg-gray-50 transition-all font-bold text-sm shadow-sm"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Add</span>
+                    </button>
 
-          {/* Conversation States Section */}
-          <div className="border border-gray-100 rounded-2xl overflow-hidden">
-            <button 
-              onClick={() => toggleSection('states')}
-              className="w-full flex items-center justify-between p-4 bg-gray-50/50 hover:bg-gray-50 transition-colors"
-            >
-              <div className="flex items-center space-x-3 text-gray-700 font-bold text-sm">
-                <LayoutDashboard className="w-4 h-4 text-orange-500" />
-                <span>Conversation Flow (States)</span>
-              </div>
-              {expandedSections.states ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-            </button>
-            {expandedSections.states && (
-              <div className="p-4 space-y-4">
-                <p className="text-[11px] text-gray-500">Break down complex calls into distinct states.</p>
-                <div className="space-y-4">
-                  {formData.states.length > 0 && (
-                    <div className="space-y-1 p-3 bg-orange-50/50 rounded-xl border border-orange-100">
-                      <label className="text-[10px] font-bold text-orange-700 uppercase tracking-widest">Starting State</label>
-                      <select 
-                        value={formData.starting_state}
-                        onChange={(e) => setFormData({...formData, starting_state: e.target.value})}
-                        className="w-full bg-white border border-orange-200 rounded-lg p-1.5 text-xs outline-none font-bold text-gray-700"
-                      >
-                        <option value="">Select starting state...</option>
-                        {formData.states.map((state, idx) => (
-                          <option key={idx} value={state.name}>{state.name}</option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
-
-                  {formData.states.map((state, idx) => (
-                    <div key={idx} className="p-3 bg-gray-50 rounded-xl border border-gray-100 space-y-3 group">
-                       <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-2 flex-1">
-                            <LayoutDashboard className="w-3.5 h-3.5 text-orange-400" />
-                            <input 
-                              value={state.name}
-                              onChange={(e) => {
-                                const updatedStates = [...formData.states];
-                                updatedStates[idx].name = e.target.value;
-                                setFormData({...formData, states: updatedStates});
+                    {functionsDropdownOpen && (
+                      <>
+                        <div className="fixed inset-0 z-40" onClick={() => setFunctionsDropdownOpen(false)}></div>
+                        <div className="absolute top-full left-0 mt-2 w-72 bg-white border border-gray-100 rounded-[24px] shadow-2xl z-50 py-3 animate-in fade-in zoom-in-95 duration-200">
+                          {[
+                            { label: 'End Call', icon: Mic, type: 'end_call' },
+                            { label: 'Call Transfer', icon: Headphones, type: 'transfer_call' },
+                            { label: 'Agent Transfer', icon: Mic, type: 'agent_transfer' },
+                            { label: 'Check Calendar Availability (Cal.com)', icon: Database, type: 'check_availability_cal' },
+                            { label: 'Book on the Calendar (Cal.com)', icon: Database, type: 'book_appointment_cal' },
+                            { label: 'Press Digit (IVR Navigation)', icon: Database, type: 'press_digit' },
+                            { label: 'Send SMS', icon: MessageSquare, type: 'send_sms' },
+                            { label: 'Extract Dynamic Variable', icon: Database, type: 'extract_dynamic_variable' },
+                            { label: 'Custom Function', icon: Wrench, type: 'custom' }
+                          ].map((type) => (
+                            <button
+                              key={type.type}
+                              onClick={() => {
+                                const name = prompt(`Enter function name:`);
+                                if (name) {
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    general_tools: [...prev.general_tools, { 
+                                      name: name.toLowerCase().replace(/\s+/g, '_'), 
+                                      type: type.type,
+                                      description: `Function for ${name}`
+                                    }]
+                                  }));
+                                }
+                                setFunctionsDropdownOpen(false);
                               }}
-                              className="text-sm font-bold text-gray-700 bg-transparent outline-none border-b border-transparent focus:border-blue-500 w-full"
-                              placeholder="State Name"
-                            />
-                          </div>
-                          <button 
-                            onClick={() => {
-                              setFormData({
-                                ...formData,
-                                states: formData.states.filter((_, i) => i !== idx)
-                              });
-                            }}
-                            className="p-1 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                       </div>
-                       <textarea 
-                        value={state.state_prompt}
-                        onChange={(e) => {
-                          const updatedStates = [...formData.states];
-                          updatedStates[idx].state_prompt = e.target.value;
-                          setFormData({...formData, states: updatedStates});
-                        }}
-                        className="w-full bg-white border border-gray-100 rounded-lg p-2 text-xs outline-none resize-none"
-                        placeholder="State specific prompt..."
-                        rows={3}
-                       />
-                    </div>
-                  ))}
-                  <button 
-                    onClick={() => {
-                      const newStateName = `state_${formData.states.length+1}`;
-                      setFormData({
-                        ...formData,
-                        states: [...formData.states, { name: newStateName, state_prompt: '', edges: [], tools: [] }],
-                        starting_state: formData.starting_state || newStateName
-                      });
-                    }}
-                    className="w-full py-2 px-4 bg-white border border-dashed border-gray-300 rounded-xl text-gray-500 text-xs font-bold hover:border-blue-300 hover:text-blue-500 transition-all"
-                  >
-                    Add State
-                  </button>
+                              className="w-full text-left px-5 py-2.5 hover:bg-gray-50 flex items-center space-x-4 transition-colors group"
+                            >
+                              <div className="w-8 h-8 bg-gray-50 rounded-lg flex items-center justify-center group-hover:bg-white transition-colors">
+                                <type.icon className="w-4 h-4 text-gray-400 group-hover:text-gray-900" />
+                              </div>
+                              <span className="text-sm font-bold text-gray-600 group-hover:text-gray-900">{type.label}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
           </div>
+
 
           {/* Knowledge Base Section */}
-          <div className="border border-gray-100 rounded-2xl overflow-hidden overflow-visible relative">
+          <div className="border border-gray-100 rounded-2xl relative">
             <button 
               onClick={() => toggleSection('knowledgeBase')}
               className="w-full flex items-center justify-between p-4 bg-gray-50/50 hover:bg-gray-50 transition-colors"
@@ -795,7 +773,7 @@ const LLMEditor = () => {
           </div>
 
           {/* Post-Call Analysis */}
-          <div className="border border-gray-100 rounded-2xl overflow-hidden overflow-visible relative">
+          <div className="border border-gray-100 rounded-2xl relative">
             <button 
               onClick={() => toggleSection('advanced')}
               className="w-full flex items-center justify-between p-4 bg-gray-50/50 hover:bg-gray-50 transition-colors"
@@ -973,6 +951,140 @@ const LLMEditor = () => {
 
         </div>
       </div>
+      {/* Tool Configuration Modal */}
+      {activeConfigTool && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setActiveConfigTool(null)}></div>
+          <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-xl z-10 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="px-8 py-6 border-b border-gray-100 flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <div className="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center">
+                  {activeConfigTool.type === 'extract_dynamic_variable' ? <Database className="w-5 h-5 text-gray-600" /> : <Wrench className="w-5 h-5 text-gray-600" />}
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900">
+                    {activeConfigTool.type === 'extract_dynamic_variable' ? 'Extract Dynamic Variable' : 'Configure Tool'}
+                  </h3>
+                  <p className="text-xs text-gray-500 font-medium">Extract variables so they can be used in subsequent dialogue steps.</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setActiveConfigTool(null)}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-400" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-gray-900">Function Name</label>
+                <input 
+                  value={activeConfigTool.name}
+                  onChange={(e) => setActiveConfigTool({ ...activeConfigTool, name: e.target.value })}
+                  className="w-full px-5 py-3.5 bg-gray-50/50 border border-gray-200 rounded-2xl text-[15px] font-medium outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all placeholder:text-gray-300"
+                  placeholder="e.g. extract_user_details"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-gray-900">Description</label>
+                <textarea 
+                  value={activeConfigTool.description}
+                  onChange={(e) => setActiveConfigTool({ ...activeConfigTool, description: e.target.value })}
+                  className="w-full px-5 py-3.5 bg-gray-50/50 border border-gray-200 rounded-2xl text-[15px] font-medium outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all placeholder:text-gray-300 min-h-[100px] resize-none"
+                  placeholder="e.g. Extract the user's details like name, email, age, etc. from the conversation"
+                />
+              </div>
+
+              {activeConfigTool.type === 'extract_dynamic_variable' && (
+                <div className="space-y-4">
+                  <label className="text-xs font-bold text-gray-900">Variables</label>
+                  <div className="space-y-2">
+                    {/* Variable List Placeholder */}
+                    <button 
+                      onClick={() => setIsVarModalOpen(true)}
+                      className="flex items-center space-x-2 px-4 py-2 bg-white border border-gray-200 rounded-xl text-gray-700 hover:bg-gray-50 transition-all font-bold text-sm"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Add</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-8 py-6 bg-gray-50 border-t border-gray-100 flex items-center justify-end space-x-3">
+              <button 
+                onClick={() => setActiveConfigTool(null)}
+                className="px-6 py-2.5 text-sm font-bold text-gray-500 hover:text-gray-900 transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => {
+                  const updatedTools = [...formData.general_tools];
+                  const { index, ...toolData } = activeConfigTool;
+                  updatedTools[index] = toolData;
+                  setFormData(prev => ({ ...prev, general_tools: updatedTools }));
+                  setActiveConfigTool(null);
+                  toast.success('Tool configuration saved');
+                }}
+                className="px-8 py-2.5 bg-gray-900 text-white rounded-2xl text-sm font-bold hover:bg-gray-800 transition-all shadow-lg"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Variables Sub-Modal */}
+      {isVarModalOpen && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setIsVarModalOpen(false)}></div>
+          <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-lg z-10 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+             <div className="px-8 py-6 border-b border-gray-100 flex items-center justify-between">
+                <h3 className="text-xl font-bold text-gray-900">Variables</h3>
+                <button onClick={() => setIsVarModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                  <X className="w-5 h-5 text-gray-400" />
+                </button>
+             </div>
+             <div className="p-8 space-y-6">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-gray-900">Variable Name</label>
+                  <input 
+                    className="w-full px-5 py-3.5 bg-gray-50/50 border border-gray-200 rounded-2xl text-[15px] font-medium outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all"
+                    placeholder="e.g. email / age"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-gray-900">Variable Description</label>
+                  <textarea 
+                    className="w-full px-5 py-3.5 bg-gray-50/50 border border-gray-200 rounded-2xl text-[15px] font-medium outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all min-h-[100px] resize-none"
+                    placeholder="e.g. Extract the user's email address from the conversation"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-gray-900">Variable Type <span className="text-gray-400 font-medium">(Optional)</span></label>
+                  <select className="w-full px-5 py-3.5 bg-gray-50/50 border border-gray-200 rounded-2xl text-[15px] font-medium outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all appearance-none cursor-pointer">
+                    <option>Text</option>
+                    <option>Number</option>
+                    <option>Boolean</option>
+                    <option>Enum</option>
+                  </select>
+                </div>
+             </div>
+             <div className="px-8 py-6 bg-gray-50 border-t border-gray-100 flex items-center justify-end space-x-3">
+                <button onClick={() => setIsVarModalOpen(false)} className="px-6 py-2.5 text-sm font-bold text-gray-500 hover:text-gray-900 transition-colors">Cancel</button>
+                <button onClick={() => setIsVarModalOpen(false)} className="px-8 py-2.5 bg-gray-900 text-white rounded-2xl text-sm font-bold hover:bg-gray-800 transition-all">Save</button>
+             </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
