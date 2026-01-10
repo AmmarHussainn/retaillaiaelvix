@@ -10,6 +10,7 @@ import KnowledgeBase from './pages/KnowledgeBase';
 import PhoneNumbers from './pages/PhoneNumbers';
 import Settings from './pages/Settings';
 import LLMs from './pages/LLMs';
+import LLMEditor from './pages/LLMEditor';
 import './index.css';
 
 // Placeholder components for now
@@ -34,6 +35,8 @@ function App() {
                 <Route index element={<Navigate to="/agents" replace />} />
                 <Route path="agents" element={<Agents />} />
                 <Route path="llms" element={<LLMs />} />
+                <Route path="llms/create" element={<LLMEditor />} />
+                <Route path="llms/edit/:id" element={<LLMEditor />} />
                 <Route path="knowledge-base" element={<KnowledgeBase />} />
                 <Route path="phone-numbers" element={<PhoneNumbers />} />
                 {/* <Route path="settings" element={<Settings />} /> */}

@@ -28,8 +28,10 @@ export const ToastProvider = ({ children }) => {
   const info = useCallback((message, duration) => addToast(message, 'info', duration), [addToast]);
   const warning = useCallback((message, duration) => addToast(message, 'warning', duration), [addToast]);
 
+  const value = React.useMemo(() => ({ addToast, removeToast, success, error, info, warning }), [addToast, removeToast, success, error, info, warning]);
+
   return (
-    <ToastContext.Provider value={{ addToast, removeToast, success, error, info, warning }}>
+    <ToastContext.Provider value={value}>
       {children}
       <ToastContainer toasts={toasts} removeToast={removeToast} />
     </ToastContext.Provider>

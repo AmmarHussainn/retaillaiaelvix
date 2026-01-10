@@ -1,24 +1,21 @@
 
-import React, { useState, useEffect } from 'react';
-import { Plus, Search, MessageSquare, MoreVertical, Trash2, Edit } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Plus, Search, MessageSquare, MoreVertical, Trash2, Wrench, LayoutDashboard, ChevronRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import llmService from '../services/llmService';
-import CreateLLMModal from '../components/llms/CreateLLMModal';
-import UpdateLLMModal from '../components/llms/UpdateLLMModal';
 import ConfirmationModal from '../components/ui/ConfirmationModal';
 import { useToast } from '../context/ToastContext';
 
 const LLMs = () => {
+  const navigate = useNavigate();
   const [llms, setLlms] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showUpdateModal, setShowUpdateModal] = useState(false);
-  const [selectedLLM, setSelectedLLM] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [deleteModalState, setDeleteModalState] = useState({ isOpen: false, llmId: null });
   const [isDeleting, setIsDeleting] = useState(false);
   const toast = useToast();
 
-  const fetchLLMs = async () => {
+  const fetchLLMs = useCallback(async () => {
     try {
       const data = await llmService.getAllLLMs();
       setLlms(Array.isArray(data) ? data : []);
@@ -28,11 +25,11 @@ const LLMs = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast.error]);
 
   useEffect(() => {
     fetchLLMs();
-  }, []);
+  }, [fetchLLMs]);
 
   const handleInitiateDelete = (id) => {
     setDeleteModalState({ isOpen: true, llmId: id });
@@ -56,8 +53,8 @@ const LLMs = () => {
   };
 
   const handleEdit = (llm) => {
-    setSelectedLLM(llm);
-    setShowUpdateModal(true);
+    const displayId = llm.llm_id || llm.retell_llm_id;
+    navigate(`/llms/edit/${displayId}`);
   };
 
   const filteredLLMs = llms.filter(llm => 
@@ -73,7 +70,7 @@ const LLMs = () => {
           <p className="text-gray-500 mt-1">Manage your Large Language Models and prompts</p>
         </div>
         <button
-          onClick={() => setShowCreateModal(true)}
+          onClick={() => navigate('/llms/create')}
           className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
         >
           <Plus className="w-5 h-5 mr-2" />
@@ -103,7 +100,7 @@ const LLMs = () => {
           <h3 className="text-lg font-semibold text-gray-900">No LLMs found</h3>
           <p className="text-gray-500 mt-2 mb-6">Get started by creating your first LLM configuration.</p>
           <button
-            onClick={() => setShowCreateModal(true)}
+            onClick={() => navigate('/llms/create')}
             className="px-6 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
           >
             Create LLM
@@ -118,45 +115,64 @@ const LLMs = () => {
              const displayId = llm.llm_id || llm.retell_llm_id || 'N/A';
              
              return (
-              <div key={dbId} className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-lg transition-shadow duration-300 p-6 flex flex-col justify-between h-full group">
-                <div>
-                  <div className="flex justify-between items-start mb-4">
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold uppercase tracking-wide bg-blue-50 text-blue-700">
-                      {llm.model || 'Unknown Model'}
-                    </span>
-                    <div className="flex space-x-1">
-                      <button className="p-1 text-gray-300 hover:text-blue-600 transition-colors">
-                          <MoreVertical className="w-4 h-4" />
-                      </button>
+              <div key={dbId} className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between h-full group relative overflow-hidden">
+                {/* Status Bar */}
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-indigo-600"></div>
+
+                <div className="p-6">
+                  <div className="flex justify-between items-start mb-6">
+                    <div className="flex flex-wrap gap-2">
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-100">
+                        {llm.model || 'Unknown'}
+                      </span>
+                      {llm.s2s_model && (
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-purple-50 text-purple-700 border border-purple-100">
+                          S2S Enabled
+                        </span>
+                      )}
+                      {(llm.knowledge_base_ids?.length > 0) && (
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-100">
+                          RAG
+                        </span>
+                      )}
                     </div>
+                    <button className="p-2 text-gray-400 hover:text-gray-900 hover:bg-gray-50 rounded-xl transition-all">
+                      <MoreVertical className="w-5 h-5" />
+                    </button>
                   </div>
 
-                  <h3 className="text-lg font-bold text-gray-900 mb-2 truncate">
-                     {llm.llm_websocket_url ? 'Custom LLM' : (llm.model || 'Untitled LLM')}
+                  <h3 className="text-xl font-bold text-gray-900 mb-3 tracking-tight">
+                     {llm.llm_websocket_url ? 'Custom WebSocket' : (llm.model || 'Standard Engine')}
                   </h3>
 
-                  <div className="space-y-3 mt-4">
+                  <div className="space-y-4">
                     {/* Prompt Preview */}
-                    <div className="text-sm text-gray-600 line-clamp-2 bg-gray-50 p-2 rounded border border-gray-100 italic">
+                    <div className="text-sm text-gray-600 line-clamp-3 bg-gray-50/50 p-3 rounded-xl border border-gray-100/50 italic leading-relaxed">
                         "{llm.general_prompt || 'No system prompt configured...'}"
                     </div>
 
-                    {/* First Message */}
-                    <div className="flex items-center text-sm text-gray-500">
-                       <MessageSquare className="w-4 h-4 mr-2 text-green-500" />
-                       <span className="truncate">{llm.begin_message || 'No greeting message'}</span>
+                    {/* Stats Grid */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="flex items-center space-x-2 p-2 bg-gray-50 rounded-lg">
+                        <Wrench className="w-4 h-4 text-blue-500" />
+                        <span className="text-xs font-semibold text-gray-700">{llm.general_tools?.length || 0} Tools</span>
+                      </div>
+                      <div className="flex items-center space-x-2 p-2 bg-gray-50 rounded-lg">
+                        <LayoutDashboard className="w-4 h-4 text-indigo-500" />
+                        <span className="text-xs font-semibold text-gray-700">{llm.states?.length || 0} States</span>
+                      </div>
                     </div>
 
-                    {/* ID Display */}
-                    <div className="flex items-center text-xs text-gray-500 font-mono bg-gray-50 px-2 py-1 rounded border border-gray-100 group-hover:border-blue-100 transition-colors">
-                        <span className="truncate flex-1">ID: {displayId}</span>
+                    {/* ID & Copy */}
+                    <div className="flex items-center justify-between p-2.5 bg-gray-900 rounded-xl text-white">
+                        <span className="text-[10px] font-mono opacity-60 truncate mr-2">ID: {displayId}</span>
                         <button 
                             onClick={(e) => {
                                 e.stopPropagation();
                                 navigator.clipboard.writeText(displayId);
-                                toast.success('LLM ID copied');
+                                toast.success('ID Copied');
                             }}
-                            className="ml-2 text-blue-500 hover:text-blue-700 font-sans font-medium opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="text-[10px] font-bold uppercase tracking-widest text-blue-400 hover:text-blue-300 transition-colors"
                         >
                             Copy
                         </button>
@@ -164,24 +180,23 @@ const LLMs = () => {
                   </div>
                 </div>
 
-                <div className="mt-6 pt-4 border-t border-gray-100 flex items-center justify-between">
-                   <div className="flex space-x-2 w-full">
+                <div className="p-6 pt-0 mt-auto">
+                   <div className="flex space-x-3">
                       <button 
                         onClick={() => handleEdit(llm)}
-                        className="flex-1 px-3 py-2 bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
+                        className="flex-1 px-4 py-2.5 bg-gray-900 border border-gray-900 text-white text-sm font-bold rounded-xl hover:bg-gray-800 transition-all shadow-lg shadow-gray-200"
                       >
-                        Edit
+                        Configure
                       </button>
                       <button 
                           onClick={async (e) => {
                             e.stopPropagation();
-                            // MUST use displayId (Retell LLM ID) for the backend delete endpoint
                             await handleInitiateDelete(displayId);
                           }}
-                          className="px-3 py-2 bg-red-50 text-red-600 text-sm font-medium rounded-lg hover:bg-red-100 transition-colors" 
+                          className="px-4 py-2.5 bg-red-50 text-red-600 text-sm font-bold rounded-xl hover:bg-red-100 transition-all border border-red-100" 
                           title="Delete LLM"
                       >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-5 h-5" />
                       </button>
                    </div>
                 </div>
@@ -191,23 +206,7 @@ const LLMs = () => {
         </div>
       )}
 
-      {showCreateModal && (
-        <CreateLLMModal
-          onClose={() => setShowCreateModal(false)}
-          onSuccess={fetchLLMs}
-        />
-      )}
 
-      {showUpdateModal && selectedLLM && (
-        <UpdateLLMModal
-          llm={selectedLLM}
-          onClose={() => {
-            setShowUpdateModal(false);
-            setSelectedLLM(null);
-          }}
-          onSuccess={fetchLLMs}
-        />
-      )}
 
       <ConfirmationModal
         isOpen={deleteModalState.isOpen}
