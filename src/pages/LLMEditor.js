@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import llmService from '../services/llmService';
 import knowledgeBaseService from '../services/knowledgeBaseService';
+import agentService from '../services/agentService';
 import { useToast } from '../context/ToastContext';
 import { 
   X, Search, Sliders, ExternalLink, RefreshCw, Layers,
@@ -31,6 +32,7 @@ const LLMEditor = () => {
   });
 
   const [availableKbs, setAvailableKbs] = useState([]);
+  const [availableAgents, setAvailableAgents] = useState([]);
   const [kbDropdownOpen, setKbDropdownOpen] = useState(false);
   const [kbSettingsOpen, setKbSettingsOpen] = useState(false);
   const [postCallDropdownOpen, setPostCallDropdownOpen] = useState(false);
@@ -101,12 +103,22 @@ const LLMEditor = () => {
     }
   }, []);
 
+  const fetchAvailableAgents = useCallback(async () => {
+    try {
+      const data = await agentService.getAllAgents();
+      setAvailableAgents(Array.isArray(data) ? data : data.agents || []);
+    } catch (error) {
+      console.error('Error fetching available agents:', error);
+    }
+  }, []);
+
   useEffect(() => {
     if (isEditMode) {
       fetchLLM();
     }
     fetchAvailableKbs();
-  }, [isEditMode, fetchLLM, fetchAvailableKbs]);
+    fetchAvailableAgents();
+  }, [isEditMode, fetchLLM, fetchAvailableKbs, fetchAvailableAgents]);
 
   const toggleSection = (section) => {
     setExpandedSections(prev => ({
@@ -190,226 +202,224 @@ const LLMEditor = () => {
 
       if (payload.general_tools && payload.general_tools.length > 0) {
         payload.general_tools = payload.general_tools.map(tool => {
+          // Normalize tool type immediately
+          const initialType = tool.type;
           const cleanTool = { ...tool };
           
           // Basic validation & Sanitization based on Retell OpenAPI Schema
-        if (cleanTool.type === 'transfer_call') {
-          // 1. Transfer Destination
-          cleanTool.transfer_destination = {
-            type: cleanTool.transfer_to_type === 'static' ? 'predefined' : 'dynamic'
-          };
-          if (cleanTool.transfer_to_type === 'static') {
-            cleanTool.transfer_destination.number = cleanTool.transfer_to_number || '+1234567890';
-            if (cleanTool.extension_number && cleanTool.extension_number.trim()) {
-              cleanTool.transfer_destination.extension = cleanTool.extension_number;
-            }
-          } else {
-            cleanTool.transfer_destination.prompt = cleanTool.transfer_to_prompt || 'Transfer the call to support.';
-          }
+          if (initialType === 'transfer_call') {
+            const transferTool = {
+              type: 'transfer_call',
+              name: tool.name,
+              description: tool.description || 'Transfer the call',
+              speak_during_execution: !!tool.speak_during_execution,
+              execution_message_description: tool.execution_message || tool.execution_message_description || ""
+            };
 
-          // 2. Transfer Option
-          const tType = cleanTool.transfer_type || 'cold_transfer';
-          cleanTool.transfer_option = {
-            type: tType,
-            show_transferee_as_caller: cleanTool.displayed_caller_id === 'user',
-            sip_transfer_method: cleanTool.sip_transfer_method || 'sip_refer'
-          };
-
-          if (tType === 'warm_transfer') {
-            cleanTool.transfer_option.agent_detection_timeout_ms = cleanTool.detection_timeout_ms || 30000;
-            cleanTool.transfer_option.on_hold_music = cleanTool.on_hold_music || 'ringtone';
-            
-            // Map Three-way Message to public_handoff_option
-            if (cleanTool.three_way_enabled && cleanTool.three_way_message?.content) {
-              cleanTool.transfer_option.public_handoff_option = {
-                type: 'static_message',
-                message: cleanTool.three_way_message.content
-              };
-            }
-
-            // Map Whisper Message to private_handoff_option
-            if (cleanTool.whisper_enabled && cleanTool.whisper_message?.content) {
-              cleanTool.transfer_option.private_handoff_option = {
-                type: 'static_message',
-                message: cleanTool.whisper_message.content
-              };
-            }
-          }
-
-          // 3. SIP Headers
-          if (Array.isArray(cleanTool.custom_sip_headers)) {
-            const headersObj = {};
-            cleanTool.custom_sip_headers.forEach(h => {
-              if (h.key) headersObj[h.key] = h.value;
-            });
-            if (Object.keys(headersObj).length > 0) {
-              cleanTool.custom_sip_headers = headersObj;
-            } else {
-              delete cleanTool.custom_sip_headers;
-            }
-          }
-
-          // 4. Execution Messages (Global for tool)
-          cleanTool.speak_during_execution = !!cleanTool.speak_during_execution;
-          if (cleanTool.speak_during_execution && cleanTool.execution_message) {
-            cleanTool.execution_message_description = cleanTool.execution_message;
-          }
-
-          // 5. Validation Flag
-          if (cleanTool.ignore_e164_validation !== undefined) {
-             cleanTool.ignore_e164_validation = !!cleanTool.ignore_e164_validation;
-          }
-
-          // Clean up all UI-only state fields
-          const uiFields = [
-            'transfer_to_type', 'transfer_to_number', 'transfer_to_prompt', 
-            'transfer_type', 'sip_transfer_method', 'displayed_caller_id', 
-            'on_hold_music', 'warm_transfer_mode', 'navigate_ivr', 
-            'transfer_only_if_human', 'detection_timeout_ms', 'ai_auto_greet', 
-            'whisper_enabled', 'whisper_message', 'three_way_enabled', 
-            'three_way_message', 'extension_number', 'format_to_e164',
-            'execution_message'
-          ];
-          uiFields.forEach(f => delete cleanTool[f]);
-        }
-
-          if (cleanTool.type === 'agent_transfer') {
-            // AgentSwapTool in OpenAPI
-            if (!cleanTool.agent_id) cleanTool.agent_id = 'default_agent_id';
-            if (!cleanTool.post_call_analysis_setting) cleanTool.post_call_analysis_setting = 'both_agents';
-          }
-
-          if (['check_availability_cal', 'book_appointment_cal'].includes(cleanTool.type)) {
-            if (!cleanTool.cal_api_key) cleanTool.cal_api_key = 'default_key';
-            if (!cleanTool.event_type_id) cleanTool.event_type_id = 12345;
-          }
-
-          if (cleanTool.type === 'send_sms') {
-            if (!cleanTool.sms_content || typeof cleanTool.sms_content === 'string') {
-              cleanTool.sms_content = {
+            // 1. Transfer Destination
+            const destType = tool.transfer_to_type === 'static' ? 'predefined' : 'inferred';
+            if (destType === 'predefined') {
+              transferTool.transfer_destination = {
                 type: 'predefined',
-                content: cleanTool.sms_content || 'Default SMS content'
+                number: tool.transfer_to_number || '+1234567890'
+              };
+              if (tool.extension_number && tool.extension_number.trim()) {
+                transferTool.transfer_destination.extension = tool.extension_number;
+              }
+            } else {
+              transferTool.transfer_destination = {
+                type: 'inferred',
+                prompt: tool.transfer_to_prompt || 'Transfer the call to support.'
               };
             }
-          }
 
-          if (cleanTool.type === 'extract_dynamic_variable') {
-            if (!cleanTool.variables) cleanTool.variables = [];
-            // AnalysisData in OpenAPI
-          }
+            // 2. Transfer Option
+            const tType = tool.transfer_type || 'cold_transfer';
+            transferTool.transfer_option = {
+              type: tType,
+              show_transferee_as_caller: tool.displayed_caller_id === 'user'
+            };
 
-          if (cleanTool.type === 'custom') {
-            if (!cleanTool.url) throw new Error(`Custom tool "${cleanTool.name}" requires a URL`);
-            if (!cleanTool.description) throw new Error(`Custom tool "${cleanTool.name}" requires a description`);
-            
-            // speak_after_execution is required in OpenAPI
-            if (cleanTool.speak_after_execution === undefined) {
-              cleanTool.speak_after_execution = true;
-            }
-
-            // Ensure URL has a protocol to avoid "Invalid hostname"
-            if (cleanTool.url && !cleanTool.url.startsWith('http')) {
-              cleanTool.url = 'https://' + cleanTool.url;
-            }
-
-            // 1. Convert parameters (JSON string or Sample Object) to valid JSON Schema
-            if (typeof cleanTool.parameters === 'string' && cleanTool.parameters.trim()) {
-              try {
-                const parsed = JSON.parse(cleanTool.parameters);
-                
-                // Smart Inference: If it-s just a plain object (like {"date": "2025"}), convert to schema
-                if (parsed && typeof parsed === 'object' && !parsed.type && !parsed.properties) {
-                   const inferSchema = (obj) => {
-                     const properties = {};
-                     const required = [];
-                     Object.keys(obj).forEach(key => {
-                       const val = obj[key];
-                       let type = 'string';
-                       if (typeof val === 'number') type = 'number';
-                       else if (typeof val === 'boolean') type = 'boolean';
-                       else if (Array.isArray(val)) type = 'array';
-                       else if (val && typeof val === 'object') type = 'object';
-                       
-                       properties[key] = { 
-                         type, 
-                         description: `The ${key} parameter`
-                       };
-                       required.push(key);
-                     });
-                     return { type: 'object', properties, required };
-                   };
-                   cleanTool.parameters = inferSchema(parsed);
-                } else {
-                  // Already a schema or nested
-                  cleanTool.parameters = {
-                    type: "object",
-                    properties: parsed.properties || parsed || {},
-                    required: Array.isArray(parsed.required) ? parsed.required : []
-                  };
-                }
-              } catch (e) {
-                throw new Error(`Invalid JSON in parameters for tool "${cleanTool.name}"`);
+            if (tType === 'warm_transfer') {
+              transferTool.transfer_option.agent_detection_timeout_ms = tool.detection_timeout_ms || 30000;
+              transferTool.transfer_option.on_hold_music = tool.on_hold_music || 'ringtone';
+              
+              if (tool.three_way_enabled && tool.three_way_message?.content) {
+                transferTool.transfer_option.public_handoff_option = {
+                  type: 'static_message',
+                  message: tool.three_way_message.content
+                };
               }
-            } else if (Array.isArray(cleanTool.parametersForm) && cleanTool.parametersForm.length > 0) {
-              // Convert Form data to Schema
+              if (tool.whisper_enabled && tool.whisper_message?.content) {
+                transferTool.transfer_option.private_handoff_option = {
+                  type: 'static_message',
+                  message: tool.whisper_message.content
+                };
+              }
+            }
+
+            // 3. SIP Headers
+            if (Array.isArray(tool.custom_sip_headers)) {
+              const headersObj = {};
+              tool.custom_sip_headers.forEach(h => {
+                if (h.key) headersObj[h.key] = h.value;
+              });
+              if (Object.keys(headersObj).length > 0) {
+                transferTool.custom_sip_headers = headersObj;
+              }
+            }
+
+            if (tool.ignore_e164_validation !== undefined) {
+              transferTool.ignore_e164_validation = !!tool.ignore_e164_validation;
+            }
+
+            return transferTool;
+          }
+
+          if (initialType === 'agent_transfer' || initialType === 'agent_swap') {
+            const swapTool = {
+              type: 'agent_swap',
+              name: tool.name,
+              description: tool.description || 'Transfer to another agent',
+              agent_id: tool.agent_id,
+              agent_version: Number(tool.agent_version) || 1,
+              speak_during_execution: !!tool.speak_during_execution,
+              execution_message_description: tool.execution_message || tool.execution_message_description || "",
+              post_call_analysis_setting: tool.post_call_analysis_setting || 'both_agents',
+              webhook_setting: tool.webhook_setting || 'only_source_agent'
+            };
+
+            if (!swapTool.agent_id) {
+               throw new Error(`Agent Transfer tool "${swapTool.name}" requires an agent selection.`);
+            }
+
+            return swapTool;
+          }
+
+          if (initialType === 'end_call') {
+            return {
+              type: 'end_call',
+              name: tool.name,
+              description: tool.description || 'End the call',
+              speak_during_execution: !!tool.speak_during_execution,
+              execution_message_description: tool.execution_message || tool.execution_message_description || ""
+            };
+          }
+
+          if (['check_availability_cal', 'book_appointment_cal'].includes(initialType)) {
+             return {
+               type: initialType,
+               name: tool.name,
+               description: tool.description || 'Calendar tool',
+               cal_api_key: tool.cal_api_key || 'default_key',
+               event_type_id: Number(tool.event_type_id) || 12345,
+               timezone: tool.timezone
+             };
+          }
+
+          if (initialType === 'send_sms') {
+            return {
+              type: 'send_sms',
+              name: tool.name,
+              description: tool.description || 'Send SMS',
+              sms_content: (tool.sms_content && typeof tool.sms_content === 'object') ? tool.sms_content : {
+                type: 'predefined',
+                content: tool.sms_content || 'Default SMS content'
+              }
+            };
+          }
+
+          if (initialType === 'press_digit') {
+            return {
+              type: 'press_digit',
+              name: tool.name,
+              description: tool.description || 'Press digit',
+              delay_ms: Number(tool.delay_ms) || 1000
+            };
+          }
+
+          if (initialType === 'custom') {
+            const customTool = {
+              type: 'custom',
+              name: tool.name,
+              url: tool.url,
+              description: tool.description,
+              method: tool.method || 'POST',
+              speak_during_execution: !!tool.speak_during_execution,
+              speak_after_execution: tool.speak_after_execution !== false,
+              execution_message_description: tool.execution_message || tool.execution_message_description || "",
+              timeout_ms: Number(tool.timeout_ms) || 120000,
+              args_at_root: !!tool.args_at_root
+            };
+
+            if (!customTool.url) throw new Error(`Custom tool "${tool.name}" requires a URL`);
+            if (!customTool.description) throw new Error(`Custom tool "${tool.name}" requires a description`);
+
+            // Ensure URL has a protocol
+            if (customTool.url && !customTool.url.startsWith('http')) {
+              customTool.url = 'https://' + customTool.url;
+            }
+
+            // Headers & Query Params
+            if (Array.isArray(tool.headers)) {
+              customTool.headers = tool.headers.reduce((acc, curr) => {
+                if (curr.key) acc[curr.key] = curr.value || '';
+                return acc;
+              }, {});
+            }
+            
+            const qParams = tool.query_params || tool.query_parameters;
+            if (Array.isArray(qParams)) {
+              customTool.query_params = qParams.reduce((acc, curr) => {
+                if (curr.key) acc[curr.key] = curr.value || '';
+                return acc;
+              }, {});
+            }
+
+            // Response Variables
+            if (Array.isArray(tool.response_variables)) {
+              customTool.response_variables = tool.response_variables.reduce((acc, curr) => {
+                if (curr.key) acc[curr.key] = curr.value || '';
+                return acc;
+              }, {});
+            }
+
+            // Parameters
+            if (tool.parameterViewMode === 'form' && Array.isArray(tool.parametersForm)) {
               const properties = {};
               const required = [];
-              cleanTool.parametersForm.forEach(p => {
+              tool.parametersForm.forEach(p => {
                 if (p.name) {
                   properties[p.name] = {
                     type: p.type || 'string',
-                    description: p.detail_mode === 'description' ? p.detail_content : '',
-                    // Retell also allows 'example' or similar if detail_mode is 'value'
-                    ...(p.detail_mode === 'value' ? { default: p.detail_content } : {})
+                    description: p.detail_mode === 'description' ? p.detail_content : ''
                   };
                   if (p.required) required.push(p.name);
                 }
               });
-              cleanTool.parameters = { type: 'object', properties, required };
-            } else if (!cleanTool.parameters || (typeof cleanTool.parameters === 'object' && Object.keys(cleanTool.parameters).length === 0)) {
-              delete cleanTool.parameters;
+              customTool.parameters = { type: 'object', properties, required };
+            } else if (tool.parameters) {
+              try {
+                const parsed = typeof tool.parameters === 'string' ? JSON.parse(tool.parameters) : tool.parameters;
+                customTool.parameters = parsed;
+              } catch (e) {}
             }
 
-            // Clean up UI-only fields
-            delete cleanTool.parameterViewMode;
-            delete cleanTool.parametersForm;
-
-            // 2. Convert headers/query_params arrays to objects
-            // Rename internal 'query_parameters' to API's 'query_params'
-            const qParams = cleanTool.query_params || cleanTool.query_parameters;
-            
-            if (Array.isArray(cleanTool.headers)) {
-              cleanTool.headers = cleanTool.headers.reduce((acc, curr) => {
-                if (curr.key && curr.key.trim()) acc[curr.key] = curr.value || '';
-                return acc;
-              }, {});
-            }
-            if (Array.isArray(qParams)) {
-              cleanTool.query_params = qParams.reduce((acc, curr) => {
-                if (curr.key && curr.key.trim()) acc[curr.key] = curr.value || '';
-                return acc;
-              }, {});
-              delete cleanTool.query_parameters; // Remove internal key
-            }
-
-            // 3. Convert response_variables array to object (key -> path)
-            if (Array.isArray(cleanTool.response_variables)) {
-              cleanTool.response_variables = cleanTool.response_variables.reduce((acc, curr) => {
-                if (curr.key && curr.key.trim()) acc[curr.key] = curr.value || '';
-                return acc;
-              }, {});
-            }
-
-            // Optional fields cleaning
-            if (!cleanTool.headers || Object.keys(cleanTool.headers).length === 0) delete cleanTool.headers;
-            if (!cleanTool.query_params || Object.keys(cleanTool.query_params).length === 0) delete cleanTool.query_params;
-            if (!cleanTool.response_variables || Object.keys(cleanTool.response_variables).length === 0) delete cleanTool.response_variables;
+            return customTool;
           }
 
-          // Clean up empty fields to avoid validation noise
+          if (initialType === 'extract_dynamic_variable') {
+            return {
+              type: 'extract_dynamic_variable',
+              name: tool.name,
+              description: tool.description,
+              variables: Array.isArray(tool.variables) ? tool.variables : []
+            };
+          }
+
+          // Fallback cleanup for any other tool types
           Object.keys(cleanTool).forEach(key => {
-            if (cleanTool[key] === null || cleanTool[key] === undefined || cleanTool[key] === '') {
-              // Only delete if it's not a root required field or if it's safe to omit
+            if (cleanTool[key] === null || cleanTool[key] === undefined || (cleanTool[key] === '' && key !== 'execution_message_description')) {
               if (key !== 'name' && key !== 'type') {
                  delete cleanTool[key];
               }
@@ -760,6 +770,19 @@ const LLMEditor = () => {
                                     description: 'Transfer the call to a human agent'
                                   });
                                 }
+                                // Advanced fields for agent_transfer
+                                if (type.type === 'agent_transfer') {
+                                  Object.assign(baseTool, {
+                                    agent_id: '',
+                                    agent_version: 1,
+                                    post_call_analysis_setting: 'both_agents',
+                                    webhook_setting: 'only_source_agent',
+                                    speak_during_execution: false,
+                                    execution_message: 'Wait a moment while I transfer you to my colleague...',
+                                    description: 'Transfer the call to another specialist agent.'
+                                  });
+                                }
+
                                 // Advanced fields for custom tools
                                 if (type.type === 'custom') {
                                   Object.assign(baseTool, {
@@ -1256,6 +1279,7 @@ const LLMEditor = () => {
                   <p className="text-xs text-gray-500 font-medium">
                     {activeConfigTool.type === 'custom' ? 'Connect to external APIs and services.' : 
                      activeConfigTool.type === 'transfer_call' ? 'Transfer the call to a human agent, SIP URI, or dynamic destination.' :
+                     activeConfigTool.type === 'agent_transfer' ? 'Transfer to another agent to bring in new capabilities and fulfill different tasks.' :
                      'Configure the behavior of this tool.'}
                   </p>
                 </div>
@@ -1270,6 +1294,16 @@ const LLMEditor = () => {
 
             {/* Body */}
             <div className="p-8 space-y-6 max-h-[75vh] overflow-y-auto custom-scrollbar">
+              {/* Info Alert for Agent Transfer */}
+              {activeConfigTool.type === 'agent_transfer' && (
+                <div className="bg-blue-50/50 border border-blue-100 rounded-2xl p-4 flex items-start space-x-3">
+                  <Info className="w-5 h-5 text-blue-500 mt-0.5" />
+                  <p className="text-sm text-blue-700 font-medium leading-relaxed">
+                    It will be a seamless transition, with all the call context preserved. It will appear as a single call in history.
+                  </p>
+                </div>
+              )}
+
               {/* Common Fields: Name & Description */}
               <div className="space-y-4">
                 <div className="space-y-2">
@@ -2011,6 +2045,130 @@ const LLMEditor = () => {
                           placeholder="Please wait while I transfer your call..."
                        />
                     )}
+                  </div>
+                </div>
+              )}
+
+              {activeConfigTool.type === 'agent_transfer' && (
+                <div className="space-y-8 pt-4">
+                  {/* Select Agent Dropdown */}
+                  <div className="space-y-3">
+                    <label className="text-xs font-bold text-gray-900 uppercase tracking-wider ml-1">Select Agent</label>
+                    <div className="relative group">
+                      <select 
+                        value={activeConfigTool.agent_id || ''}
+                        onChange={(e) => setActiveConfigTool({ ...activeConfigTool, agent_id: e.target.value, agent_version: 1 })}
+                        className="w-full px-5 py-3.5 bg-gray-50 rounded-2xl text-[15px] font-bold outline-none border border-gray-100 focus:ring-4 focus:ring-blue-500/5 focus:border-blue-200 appearance-none cursor-pointer transition-all"
+                      >
+                        <option value="" disabled>Select an agent</option>
+                        {availableAgents.map((agent) => (
+                          <option key={agent.agent_id} value={agent.agent_id}>
+                            {agent.agent_name || 'Untitled Agent'} - (Latest)
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+                    </div>
+
+                    {/* Voice Display for Selected Agent */}
+                    {activeConfigTool.agent_id && (
+                      <div className="bg-gray-50/50 border border-gray-100 rounded-2xl p-4 space-y-3">
+                         <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-3">
+                               <span className="text-xs font-bold text-gray-500">Voice</span>
+                               <div className="flex items-center space-x-2 px-3 py-1 bg-white rounded-lg border border-gray-100 shadow-sm">
+                                  <div className="w-5 h-5 rounded-full overflow-hidden bg-orange-100">
+                                     <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${availableAgents.find(a => a.agent_id === activeConfigTool.agent_id)?.voice_id || 'Cimo'}`} alt="Voice" />
+                                  </div>
+                                  <span className="text-[13px] font-bold text-gray-700">
+                                    {availableAgents.find(a => a.agent_id === activeConfigTool.agent_id)?.voice_id || 'Cimo'}
+                                  </span>
+                               </div>
+                            </div>
+                            <ExternalLink className="w-4 h-4 text-gray-400" />
+                         </div>
+                         <p className="text-[11px] text-gray-500 font-medium">It will use the voice that you set for the selected agent.</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Execution Message (Simplified) */}
+                  <div className="space-y-4 pt-4 border-t border-gray-100">
+                    <label className="text-xs font-bold text-gray-900 uppercase tracking-wider ml-1">Execution Message</label>
+                    <div className="flex items-center space-x-3">
+                      <input 
+                        type="checkbox"
+                        id="speak_during_agent"
+                        checked={activeConfigTool.speak_during_execution || false}
+                        onChange={(e) => setActiveConfigTool({ ...activeConfigTool, speak_during_execution: e.target.checked })}
+                        className="w-5 h-5 accent-gray-900 rounded-lg cursor-pointer transition-all"
+                      />
+                      <label htmlFor="speak_during_agent" className="flex-1 cursor-pointer">
+                        <p className="text-sm font-bold text-gray-900">Speak During Execution</p>
+                        <p className="text-[11px] text-gray-500 font-medium">If the function takes over 2 seconds, the agent can say something like: "Let me check that for you."</p>
+                      </label>
+                    </div>
+                    {activeConfigTool.speak_during_execution && (
+                       <textarea 
+                          value={activeConfigTool.execution_message || ''}
+                          onChange={(e) => setActiveConfigTool({ ...activeConfigTool, execution_message: e.target.value })}
+                          className="w-full px-5 py-3.5 bg-gray-50 rounded-2xl text-[15px] font-medium outline-none border border-gray-100 focus:ring-4 focus:ring-blue-500/5 focus:border-blue-200 transition-all min-h-[80px] resize-none animate-in fade-in slide-in-from-top-2 duration-200"
+                          placeholder="Wait a moment while I transfer you to my colleague..."
+                       />
+                    )}
+                  </div>
+
+                  {/* Post Call Analysis Setting */}
+                  <div className="space-y-4 pt-4 border-t border-gray-100">
+                    <div>
+                      <label className="text-xs font-bold text-gray-900 uppercase tracking-wider ml-1">Post Call Analysis Setting</label>
+                      <p className="text-[11px] text-gray-500 font-medium ml-1">Select which agent's analysis fields to include in the call history.</p>
+                    </div>
+                    <div className="space-y-3">
+                      {[
+                        { id: 'only_destination_agent', label: 'Only transferred agent' },
+                        { id: 'both_agents', label: 'Both this agent and transferred agent' }
+                      ].map(option => (
+                        <div key={option.id} className="flex items-center space-x-3">
+                          <input 
+                            type="radio" 
+                            id={option.id}
+                            name="post_call_analysis"
+                            checked={activeConfigTool.post_call_analysis_setting === option.id}
+                            onChange={() => setActiveConfigTool({ ...activeConfigTool, post_call_analysis_setting: option.id })}
+                            className="w-4 h-4 accent-gray-900 cursor-pointer"
+                          />
+                          <label htmlFor={option.id} className="text-sm font-bold text-gray-700 cursor-pointer leading-none">{option.label}</label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Webhook Setting */}
+                  <div className="space-y-4 pt-4 border-t border-gray-100">
+                    <div>
+                      <label className="text-xs font-bold text-gray-900 uppercase tracking-wider ml-1">Webhook Setting</label>
+                      <p className="text-[11px] text-gray-500 font-medium ml-1">Select which agent's webhook endpoint to use for sending call updates.</p>
+                    </div>
+                    <div className="space-y-3">
+                      {[
+                        { id: 'only_destination_agent', label: 'Only transferred agent' },
+                        { id: 'both_agents', label: 'Both this agent and transferred agent' },
+                        { id: 'only_source_agent', label: 'Only this agent' }
+                      ].map(option => (
+                        <div key={option.id} className="flex items-center space-x-3">
+                          <input 
+                            type="radio" 
+                            id={`webhook_${option.id}`}
+                            name="webhook_setting"
+                            checked={activeConfigTool.webhook_setting === option.id}
+                            onChange={() => setActiveConfigTool({ ...activeConfigTool, webhook_setting: option.id })}
+                            className="w-4 h-4 accent-gray-900 cursor-pointer"
+                          />
+                          <label htmlFor={`webhook_${option.id}`} className="text-sm font-bold text-gray-700 cursor-pointer leading-none">{option.label}</label>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               )}
