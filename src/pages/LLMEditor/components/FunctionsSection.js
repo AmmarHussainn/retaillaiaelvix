@@ -1,17 +1,14 @@
-import React from "react";
 import {
-  Wrench,
-  ChevronUp,
   ChevronDown,
-  Mic,
-  Headphones,
+  ChevronUp,
   Database,
   Edit2,
-  Trash2,
-  Plus,
-  MessageSquare,
-  LayoutDashboard,
+  Headphones,
   Layers,
+  Mic,
+  Plus,
+  Trash2,
+  Wrench,
 } from "lucide-react";
 
 const FunctionsSection = ({
@@ -135,16 +132,6 @@ const FunctionsSection = ({
                         label: "Book on the Calendar (Cal.com)",
                         icon: Database,
                         type: "book_appointment_cal",
-                      },
-                      {
-                        label: "Press Digit (IVR Navigation)",
-                        icon: LayoutDashboard,
-                        type: "press_digit",
-                      },
-                      {
-                        label: "Send SMS",
-                        icon: MessageSquare,
-                        type: "send_sms",
                       },
                       {
                         label: "Extract Dynamic Variable",
