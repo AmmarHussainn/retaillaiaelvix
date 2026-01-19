@@ -49,7 +49,7 @@ const AgentTransferForm = ({
                     <img
                       src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${
                         availableAgents.find(
-                          (a) => a.agent_id === activeConfigTool.agent_id
+                          (a) => a.agent_id === activeConfigTool.agent_id,
                         )?.voice_id || "Cimo"
                       }`}
                       alt="Voice"
@@ -57,7 +57,7 @@ const AgentTransferForm = ({
                   </div>
                   <span className="text-[13px] font-bold text-gray-700">
                     {availableAgents.find(
-                      (a) => a.agent_id === activeConfigTool.agent_id
+                      (a) => a.agent_id === activeConfigTool.agent_id,
                     )?.voice_id || "Cimo"}
                   </span>
                 </div>

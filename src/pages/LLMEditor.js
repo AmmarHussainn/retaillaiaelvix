@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useToast } from "../context/ToastContext";
 import agentService from "../services/agentService";
 import knowledgeBaseService from "../services/knowledgeBaseService";
@@ -17,8 +17,11 @@ import VariablesSubModal from "./LLMEditor/components/VariablesSubModal";
 const LLMEditor = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const toast = useToast();
   const isEditMode = !!id;
+  const fromAgents = location.state?.fromAgents;
+  const agent_id = location.state?.agent_id;
 
   const [loading, setLoading] = useState(isEditMode);
   const [saving, setSaving] = useState(false);
@@ -125,7 +128,7 @@ const LLMEditor = () => {
 
         // Convert key-value headers to array for form
         normalized.custom_sip_headers = Object.entries(
-          tool.custom_sip_headers || {}
+          tool.custom_sip_headers || {},
         ).map(([key, value]) => ({ key, value }));
       } else if (tool.type === "agent_swap") {
         // UI uses agent_transfer for both swap and transfer types for simplicity
@@ -133,13 +136,13 @@ const LLMEditor = () => {
       } else if (tool.type === "custom") {
         // Convert key-value maps to arrays for form components
         normalized.headers = Object.entries(tool.headers || {}).map(
-          ([key, value]) => ({ key, value })
+          ([key, value]) => ({ key, value }),
         );
         normalized.query_parameters = Object.entries(
-          tool.query_params || tool.query_parameters || {}
+          tool.query_params || tool.query_parameters || {},
         ).map(([key, value]) => ({ key, value }));
         normalized.response_variables = Object.entries(
-          tool.response_variables || {}
+          tool.response_variables || {},
         ).map(([key, value]) => ({ key, value }));
 
         // Default to JSON mode for parameters when loading existing
@@ -355,7 +358,7 @@ const LLMEditor = () => {
 
             if (!swapTool.agent_id) {
               throw new Error(
-                `Agent Transfer tool "${swapTool.name}" requires an agent selection.`
+                `Agent Transfer tool "${swapTool.name}" requires an agent selection.`,
               );
             }
 
@@ -377,7 +380,7 @@ const LLMEditor = () => {
 
           if (
             ["check_availability_cal", "book_appointment_cal"].includes(
-              initialType
+              initialType,
             )
           ) {
             return {
@@ -435,7 +438,7 @@ const LLMEditor = () => {
               throw new Error(`Custom tool "${tool.name}" requires a URL`);
             if (!customTool.description)
               throw new Error(
-                `Custom tool "${tool.name}" requires a description`
+                `Custom tool "${tool.name}" requires a description`,
               );
 
             if (customTool.url && !customTool.url.startsWith("http")) {
@@ -463,7 +466,7 @@ const LLMEditor = () => {
                   if (curr.key) acc[curr.key] = curr.value || "";
                   return acc;
                 },
-                {}
+                {},
               );
             }
 
@@ -541,16 +544,63 @@ const LLMEditor = () => {
       if (isEditMode) {
         await llmService.updateLLM(id, payload);
         toast.success("LLM updated successfully");
+
+        // If we came from an agent, update the agent too (e.g. name sync)
+        if (agent_id) {
+          try {
+            await agentService.updateAgent(agent_id, {
+              agent_name: formData.name,
+            });
+            toast.success("Agent synchronized with LLM changes");
+          } catch (err) {
+            console.error("Error syncing agent:", err);
+            toast.error("LLM updated but failed to sync agent details");
+          }
+        }
+        navigate("/agents");
       } else {
-        await llmService.createLLM(payload);
+        const response = await llmService.createLLM(payload);
         toast.success("LLM created successfully");
+        if (fromAgents) {
+          try {
+            // Determine the correct Retell LLM ID
+            const retellLlmId =
+              response.llm_id ||
+              response.retell_llm_id ||
+              response._id ||
+              response.id;
+
+            // Create agent directly with default settings
+            await agentService.createAgent({
+              agent_name: response.name || "New Agent",
+              response_engine: {
+                type: "retell-llm",
+                llm_id: retellLlmId,
+              },
+              voice_id: "11labs-Adrian",
+              voice_model: "eleven_turbo_v2_5",
+              language: "en-US",
+              enable_backchannel: true,
+            });
+            toast.success("Agent created automatically with new LLM");
+          } catch (agentErr) {
+            console.error("Error creating agent automatically:", agentErr);
+            const errorMsg =
+              agentErr.response?.data?.error ||
+              agentErr.response?.data?.message ||
+              agentErr.message;
+            toast.error(`LLM created but failed to create agent: ${errorMsg}`);
+          }
+          navigate("/agents");
+        } else {
+          navigate("/agents"); // Defaulting to agents since LLMs list is gone
+        }
       }
-      navigate("/llms");
     } catch (error) {
       console.error("Error saving LLM:", error);
       toast.error(
         "Failed to save LLM: " +
-          (error.response?.data?.message || error.message)
+          (error.response?.data?.message || error.message),
       );
     } finally {
       setSaving(false);

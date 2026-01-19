@@ -1,21 +1,28 @@
-import React from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, Database, Phone, Settings, LogOut, MessageSquare } from 'lucide-react';
+import React from "react";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import {
+  LayoutDashboard,
+  Users,
+  Database,
+  Phone,
+  Settings,
+  LogOut,
+  MessageSquare,
+} from "lucide-react";
 
 const DashboardLayout = () => {
   const navigate = useNavigate();
 
   const handleLogout = () => {
     // Clear any stored auth tokens
-    localStorage.removeItem('token');
-    navigate('/login');
+    localStorage.removeItem("token");
+    navigate("/login");
   };
 
   const navItems = [
-    { name: 'Agents', path: '/agents', icon: Users },
-    { name: 'LLMs', path: '/llms', icon: MessageSquare },
-    { name: 'Knowledge Base', path: '/knowledge-base', icon: Database },
-    { name: 'Phone Number', path: '/phone-numbers', icon: Phone },
+    { name: "Agents", path: "/agents", icon: Users },
+    { name: "Knowledge Base", path: "/knowledge-base", icon: Database },
+    { name: "Phone Number", path: "/phone-numbers", icon: Phone },
     // { name: 'Settings', path: '/settings', icon: Settings },
   ];
 
@@ -28,7 +35,7 @@ const DashboardLayout = () => {
             Retell Clone
           </h1>
         </div>
-        
+
         <nav className="flex-1 px-4 space-y-1">
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -39,8 +46,8 @@ const DashboardLayout = () => {
                 className={({ isActive }) =>
                   `flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
                     isActive
-                      ? 'bg-blue-50 text-blue-700'
-                      : 'text-gray-700 hover:bg-gray-100'
+                      ? "bg-blue-50 text-blue-700"
+                      : "text-gray-700 hover:bg-gray-100"
                   }`
                 }
               >
@@ -66,11 +73,11 @@ const DashboardLayout = () => {
       <div className="flex-1 overflow-auto">
         <header className="bg-white border-b border-gray-200 px-8 py-4 sticky top-0 z-10">
           <div className="flex justify-between items-center">
-             <h2 className="text-xl font-semibold text-gray-800">Dashboard</h2>
-             {/* Placeholder for future header items like User Profile info */}
-             <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
-               U
-             </div>
+            <h2 className="text-xl font-semibold text-gray-800">Dashboard</h2>
+            {/* Placeholder for future header items like User Profile info */}
+            <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
+              U
+            </div>
           </div>
         </header>
 

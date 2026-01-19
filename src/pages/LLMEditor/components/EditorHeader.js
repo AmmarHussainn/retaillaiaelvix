@@ -16,7 +16,7 @@ const EditorHeader = ({
     <div className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between sticky top-0 z-30 shadow-sm">
       <div className="flex items-center space-x-4">
         <button
-          onClick={() => navigate("/llms")}
+          onClick={() => navigate("/agents")}
           className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
         >
           <ArrowLeft className="w-5 h-5 text-gray-600" />
@@ -83,7 +83,7 @@ const EditorHeader = ({
           ) : (
             <Save className="w-4 h-4" />
           )}
-          <span>Save Changes</span>
+          <span>{isEditMode ? "Save Changes" : "Create LLM"}</span>
         </button>
       </div>
     </div>
