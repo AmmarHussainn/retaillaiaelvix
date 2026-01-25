@@ -85,6 +85,7 @@ const LLMEditor = () => {
     webhook_url: "",
     webhook_timeout_ms: 5000,
     name: "New Response Engine",
+    language: "en-US",
   });
 
   const normalizeTools = useCallback((tools) => {
@@ -550,6 +551,7 @@ const LLMEditor = () => {
           try {
             await agentService.updateAgent(agent_id, {
               agent_name: formData.name,
+              language: formData.language,
             });
             toast.success("Agent synchronized with LLM changes");
           } catch (err) {
@@ -579,7 +581,7 @@ const LLMEditor = () => {
               },
               voice_id: "11labs-Adrian",
               voice_model: "eleven_turbo_v2_5",
-              language: "en-US",
+              language: formData.language || "en-US",
               enable_backchannel: true,
             });
             toast.success("Agent created automatically with new LLM");

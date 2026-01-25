@@ -160,7 +160,8 @@ const GeneralSettingsSection = ({
                       {item.name
                         .split("_")
                         .map(
-                          (word) => word.charAt(0).toUpperCase() + word.slice(1)
+                          (word) =>
+                            word.charAt(0).toUpperCase() + word.slice(1),
                         )
                         .join(" ")}
                     </span>
@@ -174,7 +175,7 @@ const GeneralSettingsSection = ({
                           ...prev,
                           post_call_analysis_data:
                             prev.post_call_analysis_data.filter(
-                              (_, i) => i !== idx
+                              (_, i) => i !== idx,
                             ),
                         }))
                       }
@@ -270,8 +271,8 @@ const GeneralSettingsSection = ({
                     }
                     className="text-sm font-bold text-gray-700 outline-none bg-transparent"
                   >
-                    <option value="gpt-4.1-mini">GPT-4.1 Mini</option>
-                    <option value="gpt-4.1">GPT-4.1</option>
+                    <option value="gpt-4o">GPT-4o</option>
+                    <option value="gpt-4o-mini">GPT-4o Mini</option>
                     <option value="claude-3.5-sonnet">Claude 3.5 Sonnet</option>
                   </select>
                   <ChevronDown className="w-4 h-4 text-gray-400" />
