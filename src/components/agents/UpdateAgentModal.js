@@ -1,36 +1,36 @@
-import React, { useState, useEffect } from 'react';
-import { X, Mic, Brain, Database, Volume2 } from 'lucide-react';
-import agentService from '../../services/agentService';
-import llmService from '../../services/llmService';
-import knowledgeBaseService from '../../services/knowledgeBaseService';
+import React, { useState, useEffect } from "react";
+import { X, Mic, Brain, Database, Volume2 } from "lucide-react";
+import agentService from "../../services/agentService";
+import llmService from "../../services/llmService";
+import knowledgeBaseService from "../../services/knowledgeBaseService";
 
 const UpdateAgentModal = ({ agent, onClose, onUpdated }) => {
   const [formData, setFormData] = useState({
-    agent_name: '',
+    agent_name: "",
     response_engine: {
-      type: 'retell-llm',
-      llm_id: ''
+      type: "retell-llm",
+      llm_id: "",
     },
-    voice_id: '',
-    voice_model: 'eleven_turbo_v2_5',
+    voice_id: "",
+    voice_model: "eleven_turbo_v2_5",
     knowledge_base_ids: [],
     enable_backchannel: true,
     backchannel_frequency: 0.8,
-    ambient_sound: 'coffee-shop',
+    ambient_sound: "coffee-shop",
     ambient_sound_volume: 0.5,
     responsiveness: 1.0,
     interruption_sensitivity: 1.0,
-    voice_speed: 1.0, 
+    voice_speed: 1.0,
     volume: 1.0,
     voice_temperature: 1.0,
-    language: 'en-US',
+    language: "en-US",
   });
 
   const [llms, setLlms] = useState([]);
   const [kbs, setKbs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   // Fetch dependencies and populate form on mount
   useEffect(() => {
@@ -38,37 +38,36 @@ const UpdateAgentModal = ({ agent, onClose, onUpdated }) => {
       try {
         const [llmsData, kbsData] = await Promise.all([
           llmService.getAllLLMs(),
-          knowledgeBaseService.getAllKnowledgeBases()
+          knowledgeBaseService.getAllKnowledgeBases(),
         ]);
         setLlms(Array.isArray(llmsData) ? llmsData : []);
         setKbs(Array.isArray(kbsData) ? kbsData : []);
 
         if (agent) {
-             setFormData({
-                agent_name: agent.agent_name || '',
-                response_engine: {
-                    type: 'retell-llm',
-                    llm_id: agent.response_engine?.llm_id || ''
-                },
-                voice_id: agent.voice_id || '11labs-Adrian',
-                voice_model: agent.voice_model || 'eleven_turbo_v2_5',
-                knowledge_base_ids: agent.knowledge_base_ids || [],
-                enable_backchannel: agent.enable_backchannel ?? true,
-                backchannel_frequency: agent.backchannel_frequency ?? 0.8,
-                ambient_sound: agent.ambient_sound || 'null',
-                ambient_sound_volume: agent.ambient_sound_volume ?? 0.5,
-                responsiveness: agent.responsiveness ?? 1.0,
-                interruption_sensitivity: agent.interruption_sensitivity ?? 1.0,
-                voice_speed: agent.voice_speed ?? 1.0,
-                volume: agent.volume ?? 1.0,
-                voice_temperature: agent.voice_temperature ?? 1.0,
-                language: agent.language || 'en-US',
-             });
+          setFormData({
+            agent_name: agent.agent_name || "",
+            response_engine: {
+              type: "retell-llm",
+              llm_id: agent.response_engine?.llm_id || "",
+            },
+            voice_id: agent.voice_id || "11labs-Adrian",
+            voice_model: agent.voice_model || "eleven_turbo_v2_5",
+            knowledge_base_ids: agent.knowledge_base_ids || [],
+            enable_backchannel: agent.enable_backchannel ?? true,
+            backchannel_frequency: agent.backchannel_frequency ?? 0.8,
+            ambient_sound: agent.ambient_sound || "null",
+            ambient_sound_volume: agent.ambient_sound_volume ?? 0.5,
+            responsiveness: agent.responsiveness ?? 1.0,
+            interruption_sensitivity: agent.interruption_sensitivity ?? 1.0,
+            voice_speed: agent.voice_speed ?? 1.0,
+            volume: agent.volume ?? 1.0,
+            voice_temperature: agent.voice_temperature ?? 1.0,
+            language: agent.language || "en-US",
+          });
         }
-
       } catch (err) {
-        console.error('Error fetching dependencies:', err);
-        setError('Failed to load required data.');
+        console.error("Error fetching dependencies:", err);
+        setError("Failed to load required data.");
       } finally {
         setInitialLoading(false);
       }
@@ -78,26 +77,29 @@ const UpdateAgentModal = ({ agent, onClose, onUpdated }) => {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    
-    if (name === 'llm_id') {
-      setFormData(prev => ({
+
+    if (name === "llm_id") {
+      setFormData((prev) => ({
         ...prev,
-        response_engine: { ...prev.response_engine, llm_id: value }
+        response_engine: { ...prev.response_engine, llm_id: value },
       }));
-    } else if (name === 'enable_backchannel') {
-       setFormData(prev => ({ ...prev, [name]: checked }));
-    } else if (type === 'range') {
-       setFormData(prev => ({ ...prev, [name]: parseFloat(value) }));
+    } else if (name === "enable_backchannel") {
+      setFormData((prev) => ({ ...prev, [name]: checked }));
+    } else if (type === "range") {
+      setFormData((prev) => ({ ...prev, [name]: parseFloat(value) }));
     } else {
-      setFormData(prev => ({ ...prev, [name]: value }));
+      setFormData((prev) => ({ ...prev, [name]: value }));
     }
   };
 
   const handleKBToggle = (kbId) => {
-    setFormData(prev => {
+    setFormData((prev) => {
       const currentIds = prev.knowledge_base_ids || [];
       if (currentIds.includes(kbId)) {
-        return { ...prev, knowledge_base_ids: currentIds.filter(id => id !== kbId) };
+        return {
+          ...prev,
+          knowledge_base_ids: currentIds.filter((id) => id !== kbId),
+        };
       } else {
         return { ...prev, knowledge_base_ids: [...currentIds, kbId] };
       }
@@ -107,14 +109,14 @@ const UpdateAgentModal = ({ agent, onClose, onUpdated }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
+    setError("");
 
     try {
       const payload = {
         agent_name: formData.agent_name,
         response_engine: {
-          type: 'retell-llm',
-          llm_id: formData.response_engine.llm_id
+          type: "retell-llm",
+          llm_id: formData.response_engine.llm_id,
         },
         voice_id: formData.voice_id,
         voice_model: formData.voice_model,
@@ -126,25 +128,25 @@ const UpdateAgentModal = ({ agent, onClose, onUpdated }) => {
         volume: formData.volume,
         voice_temperature: formData.voice_temperature,
         language: formData.language,
-        knowledge_base_ids: formData.knowledge_base_ids
+        knowledge_base_ids: formData.knowledge_base_ids,
       };
 
-      if (formData.ambient_sound && formData.ambient_sound !== 'null') {
+      if (formData.ambient_sound && formData.ambient_sound !== "null") {
         payload.ambient_sound = formData.ambient_sound;
         payload.ambient_sound_volume = formData.ambient_sound_volume;
       } else {
         // Explicitly clear ambient sound if set to none/null if backend supports nulling
-         // or just send null if that's how to clear it.
-         // payload.ambient_sound = null; // Risky if backend strict validation
+        // or just send null if that's how to clear it.
+        // payload.ambient_sound = null; // Risky if backend strict validation
       }
-      
+
       const agentId = agent.agent_id || agent._id; // Prefer agent_id via Retell convention
       const updatedAgent = await agentService.updateAgent(agentId, payload);
       onUpdated(updatedAgent);
       onClose();
     } catch (err) {
-      console.error('Failed to update agent:', err);
-      setError(err.response?.data?.message || 'Failed to update agent.');
+      console.error("Failed to update agent:", err);
+      setError(err.response?.data?.message || "Failed to update agent.");
     } finally {
       setLoading(false);
     }
@@ -154,8 +156,8 @@ const UpdateAgentModal = ({ agent, onClose, onUpdated }) => {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div className="bg-white p-6 rounded-lg shadow-xl">
-           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-           <p className="mt-4 text-gray-600">Loading agent data...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading agent data...</p>
         </div>
       </div>
     );
@@ -167,15 +169,22 @@ const UpdateAgentModal = ({ agent, onClose, onUpdated }) => {
         <div className="flex justify-between items-center p-6 border-b border-gray-200">
           <div>
             <h2 className="text-xl font-bold text-gray-900">Update Agent</h2>
-            <p className="text-sm text-gray-500">Modify your voice agent configuration</p>
+            <p className="text-sm text-gray-500">
+              Modify your voice agent configuration
+            </p>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 transition-colors"
+          >
             <X className="w-6 h-6" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-8">
-          
+        <form
+          onSubmit={handleSubmit}
+          className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-8"
+        >
           {/* Left Column: Basic Info & LLM */}
           <div className="space-y-6">
             <div>
@@ -194,7 +203,7 @@ const UpdateAgentModal = ({ agent, onClose, onUpdated }) => {
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+              <label className="text-sm font-semibold text-gray-700 mb-2 flex items-center">
                 <Brain className="w-4 h-4 mr-2 text-blue-600" />
                 Select LLM Brain
               </label>
@@ -206,38 +215,51 @@ const UpdateAgentModal = ({ agent, onClose, onUpdated }) => {
                 required
               >
                 <option value="">-- Select an LLM Configuration --</option>
-                {llms.map(llm => {
+                {llms.map((llm) => {
                   const retellId = llm.llm_id || llm.retell_llm_id;
-                  const value = (retellId && retellId.startsWith('llm_')) ? retellId : (llm._id || llm.id);
-                  const isRetellId = value && value.startsWith('llm_');
-                  
+                  const value =
+                    retellId && retellId.startsWith("llm_")
+                      ? retellId
+                      : llm._id || llm.id;
+                  const isRetellId = value && value.startsWith("llm_");
+
                   return (
-                   <option key={llm._id || llm.id} value={value}>
-                     {llm.model} - {llm.general_prompt?.substring(0, 30)}... {!isRetellId ? '(Invalid ID)' : ''}
-                   </option>
+                    <option key={llm._id || llm.id} value={value}>
+                      {llm.model} - {llm.general_prompt?.substring(0, 30)}...{" "}
+                      {!isRetellId ? "(Invalid ID)" : ""}
+                    </option>
                   );
                 })}
               </select>
             </div>
 
             <div>
-               <label className="block text-sm   font-semibold text-gray-700 mb-2 flex items-center">
+              <label className="text-sm   font-semibold text-gray-700 mb-2 flex items-center">
                 <Database className="w-4 h-4 mr-2 text-green-600" />
                 Knowledge Base (Optional)
               </label>
               <div className="border border-gray-200 rounded-lg max-h-48 overflow-y-auto p-2 space-y-2">
                 {kbs.length === 0 ? (
-                  <p className="text-sm text-gray-400 text-center py-4">No knowledge bases available.</p>
+                  <p className="text-sm text-gray-400 text-center py-4">
+                    No knowledge bases available.
+                  </p>
                 ) : (
-                  kbs.map(kb => (
-                    <label key={kb._id || kb.id} className="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
+                  kbs.map((kb) => (
+                    <label
+                      key={kb._id || kb.id}
+                      className="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer"
+                    >
                       <input
                         type="checkbox"
-                        checked={formData.knowledge_base_ids.includes(kb._id || kb.id)}
+                        checked={formData.knowledge_base_ids.includes(
+                          kb._id || kb.id,
+                        )}
                         onChange={() => handleKBToggle(kb._id || kb.id)}
                         className="mr-3 h-4 w-4 text-[#384152] rounded border-gray-300 focus:ring-blue-500"
                       />
-                      <span className="text-sm text-[#384152]">{kb.knowledge_base_name || kb.name}</span>
+                      <span className="text-sm text-[#384152]">
+                        {kb.knowledge_base_name || kb.name}
+                      </span>
                     </label>
                   ))
                 )}
@@ -248,7 +270,7 @@ const UpdateAgentModal = ({ agent, onClose, onUpdated }) => {
           {/* Right Column: Voice & Audio Settings */}
           <div className="space-y-6">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+              <label className="text-sm font-semibold text-gray-700 mb-2 flex items-center">
                 <Mic className="w-4 h-4 mr-2 text-purple-600" />
                 Voice Settings
               </label>
@@ -258,10 +280,20 @@ const UpdateAgentModal = ({ agent, onClose, onUpdated }) => {
                 onChange={handleChange}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                <option value="11labs-Adrian">11Labs - Adrian</option>
-                <option value="openai-Alloy">OpenAI - Alloy</option>
-                <option value="openai-Echo">OpenAI - Echo</option>
-                <option value="openai-Shimmer">OpenAI - Shimmer</option>
+                <option value="11labs-Adrian">Adrian (11Labs)</option>
+                <option value="11labs-Rachel">Rachel (11Labs)</option>
+                <option value="11labs-Sarah">Sarah (11Labs)</option>
+                <option value="11labs-Antoni">Antoni (11Labs)</option>
+                <option value="11labs-Thomas">Thomas (11Labs)</option>
+                <option value="11labs-Domi">Domi (11Labs)</option>
+                <option value="11labs-Josh">Josh (11Labs)</option>
+                <option value="11labs-Arnold">Arnold (11Labs)</option>
+                <option value="11labs-Bella">Bella (11Labs)</option>
+                <option value="11labs-Elli">Elli (11Labs)</option>
+                <option value="11labs-Sam">Sam (11Labs)</option>
+                <option value="openai-Alloy">Alloy (OpenAI)</option>
+                <option value="openai-Echo">Echo (OpenAI)</option>
+                <option value="openai-Shimmer">Shimmer (OpenAI)</option>
               </select>
             </div>
 
@@ -280,12 +312,14 @@ const UpdateAgentModal = ({ agent, onClose, onUpdated }) => {
                   onChange={handleChange}
                   className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
                 />
-                <div className="text-right text-xs text-gray-500 font-medium">{formData.responsiveness}</div>
+                <div className="text-right text-xs text-gray-500 font-medium">
+                  {formData.responsiveness}
+                </div>
               </div>
-              
+
               <div>
                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                   Interruption
+                  Interruption
                 </label>
                 <input
                   type="range"
@@ -297,46 +331,50 @@ const UpdateAgentModal = ({ agent, onClose, onUpdated }) => {
                   onChange={handleChange}
                   className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
                 />
-                 <div className="text-right text-xs text-gray-500 font-medium">{formData.interruption_sensitivity}</div>
+                <div className="text-right text-xs text-gray-500 font-medium">
+                  {formData.interruption_sensitivity}
+                </div>
               </div>
             </div>
 
-             <div>
-               <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
-                 <Volume2 className="w-4 h-4 mr-2 text-amber-600" />
-                 Ambient Sound
-               </label>
-               <select
-                 name="ambient_sound"
-                 value={formData.ambient_sound}
-                 onChange={handleChange}
-                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-               >
-                 <option value="null">None</option>
-                 <option value="coffee-shop">Coffee Shop</option>
-                 <option value="convention-hall">Convention Hall</option>
-                 <option value="summer-outdoor">Summer Outdoor</option>
-                 <option value="mountain-outdoor">Mountain Outdoor</option>
-               </select>
-             </div>
+            <div>
+              <label className="text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                <Volume2 className="w-4 h-4 mr-2 text-amber-600" />
+                Ambient Sound
+              </label>
+              <select
+                name="ambient_sound"
+                value={formData.ambient_sound}
+                onChange={handleChange}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="null">None</option>
+                <option value="coffee-shop">Coffee Shop</option>
+                <option value="convention-hall">Convention Hall</option>
+                <option value="summer-outdoor">Summer Outdoor</option>
+                <option value="mountain-outdoor">Mountain Outdoor</option>
+              </select>
+            </div>
 
-             <div className="flex items-center p-4 bg-gray-50 rounded-lg">
-                <input 
-                  type="checkbox"
-                  name="enable_backchannel"
-                  checked={formData.enable_backchannel}
-                  onChange={handleChange}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                <label className="ml-3 block text-sm font-medium text-gray-700">
-                  Enable Backchanneling
-                  <span className="block text-xs text-gray-500 font-normal">Allows the agent to say "mhm", "uh-huh" while listening.</span>
-                </label>
-             </div>
+            <div className="flex items-center p-4 bg-gray-50 rounded-lg">
+              <input
+                type="checkbox"
+                name="enable_backchannel"
+                checked={formData.enable_backchannel}
+                onChange={handleChange}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              />
+              <label className="ml-3 block text-sm font-medium text-gray-700">
+                Enable Backchanneling
+                <span className="block text-xs text-gray-500 font-normal">
+                  Allows the agent to say "mhm", "uh-huh" while listening.
+                </span>
+              </label>
+            </div>
           </div>
 
           <div className="lg:col-span-2 pt-6 border-t border-gray-200 flex justify-end space-x-3">
-             <button
+            <button
               type="button"
               onClick={onClose}
               className="px-6 py-2 text-gray-700 hover:bg-gray-100 rounded-lg font-medium transition-colors"
@@ -348,7 +386,7 @@ const UpdateAgentModal = ({ agent, onClose, onUpdated }) => {
               disabled={loading}
               className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 shadow-lg shadow-blue-500/30 transition-all transform hover:-translate-y-0.5 disabled:opacity-50 disabled:transform-none"
             >
-              {loading ? 'Saving Changes...' : 'Save Changes'}
+              {loading ? "Saving Changes..." : "Save Changes"}
             </button>
           </div>
 
@@ -357,7 +395,6 @@ const UpdateAgentModal = ({ agent, onClose, onUpdated }) => {
               {error}
             </div>
           )}
-
         </form>
       </div>
     </div>

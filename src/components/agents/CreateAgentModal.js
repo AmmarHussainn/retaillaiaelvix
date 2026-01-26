@@ -181,7 +181,7 @@ const CreateAgentModal = ({ onClose, onCreated, initialLLMData }) => {
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+              <label className="text-sm font-semibold text-gray-700 mb-2 flex items-center">
                 <Brain className="w-4 h-4 mr-2 text-blue-600" />
                 Select LLM Brain
               </label>
@@ -225,7 +225,7 @@ const CreateAgentModal = ({ onClose, onCreated, initialLLMData }) => {
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+              <label className="text-sm font-semibold text-gray-700 mb-2 flex items-center">
                 <Database className="w-4 h-4 mr-2 text-green-600" />
                 Knowledge Base (Optional)
               </label>
@@ -261,7 +261,7 @@ const CreateAgentModal = ({ onClose, onCreated, initialLLMData }) => {
           {/* Right Column: Voice & Audio Settings */}
           <div className="space-y-6">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+              <label className="text-sm font-semibold text-gray-700 mb-2 flex items-center">
                 <Mic className="w-4 h-4 mr-2 text-purple-600" />
                 Voice Settings
               </label>
@@ -271,10 +271,20 @@ const CreateAgentModal = ({ onClose, onCreated, initialLLMData }) => {
                 onChange={handleChange}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                <option value="11labs-Adrian">11Labs - Adrian</option>
-                <option value="openai-Alloy">OpenAI - Alloy</option>
-                <option value="openai-Echo">OpenAI - Echo</option>
-                <option value="openai-Shimmer">OpenAI - Shimmer</option>
+                <option value="11labs-Adrian">Adrian (11Labs)</option>
+                <option value="11labs-Rachel">Rachel (11Labs)</option>
+                <option value="11labs-Sarah">Sarah (11Labs)</option>
+                <option value="11labs-Antoni">Antoni (11Labs)</option>
+                <option value="11labs-Thomas">Thomas (11Labs)</option>
+                <option value="11labs-Domi">Domi (11Labs)</option>
+                <option value="11labs-Josh">Josh (11Labs)</option>
+                <option value="11labs-Arnold">Arnold (11Labs)</option>
+                <option value="11labs-Bella">Bella (11Labs)</option>
+                <option value="11labs-Elli">Elli (11Labs)</option>
+                <option value="11labs-Sam">Sam (11Labs)</option>
+                <option value="openai-Alloy">Alloy (OpenAI)</option>
+                <option value="openai-Echo">Echo (OpenAI)</option>
+                <option value="openai-Shimmer">Shimmer (OpenAI)</option>
               </select>
             </div>
 
@@ -319,7 +329,7 @@ const CreateAgentModal = ({ onClose, onCreated, initialLLMData }) => {
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+              <label className="text-sm font-semibold text-gray-700 mb-2 flex items-center">
                 <Volume2 className="w-4 h-4 mr-2 text-amber-600" />
                 Ambient Sound
               </label>

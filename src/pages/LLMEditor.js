@@ -86,6 +86,8 @@ const LLMEditor = () => {
     webhook_timeout_ms: 5000,
     name: "New Response Engine",
     language: "en-US",
+    voice_id: "11labs-Adrian",
+    voice_model: "eleven_turbo_v2_5",
   });
 
   const normalizeTools = useCallback((tools) => {
@@ -182,6 +184,23 @@ const LLMEditor = () => {
     }
   }, [id, navigate, toast, normalizeTools]);
 
+  const fetchAgentSettings = useCallback(async () => {
+    if (!agent_id) return;
+    try {
+      const data = await agentService.getAgent(agent_id);
+      if (data) {
+        setFormData((prev) => ({
+          ...prev,
+          voice_id: data.voice_id || prev.voice_id,
+          voice_model: data.voice_model || prev.voice_model,
+          language: data.language || prev.language,
+        }));
+      }
+    } catch (error) {
+      console.error("Error fetching agent settings:", error);
+    }
+  }, [agent_id]);
+
   const fetchAvailableKbs = useCallback(async () => {
     try {
       const data = await knowledgeBaseService.getAllKnowledgeBases();
@@ -204,9 +223,19 @@ const LLMEditor = () => {
     if (isEditMode) {
       fetchLLM();
     }
+    if (agent_id) {
+      fetchAgentSettings();
+    }
     fetchAvailableKbs();
     fetchAvailableAgents();
-  }, [isEditMode, fetchLLM, fetchAvailableKbs, fetchAvailableAgents]);
+  }, [
+    isEditMode,
+    agent_id,
+    fetchLLM,
+    fetchAgentSettings,
+    fetchAvailableKbs,
+    fetchAvailableAgents,
+  ]);
 
   const toggleSection = (section) => {
     setExpandedSections((prev) => ({
@@ -552,6 +581,8 @@ const LLMEditor = () => {
             await agentService.updateAgent(agent_id, {
               agent_name: formData.name,
               language: formData.language,
+              voice_id: formData.voice_id,
+              voice_model: formData.voice_model,
             });
             toast.success("Agent synchronized with LLM changes");
           } catch (err) {
@@ -579,8 +610,8 @@ const LLMEditor = () => {
                 type: "retell-llm",
                 llm_id: retellLlmId,
               },
-              voice_id: "11labs-Adrian",
-              voice_model: "eleven_turbo_v2_5",
+              voice_id: formData.voice_id || "11labs-Adrian",
+              voice_model: formData.voice_model || "eleven_turbo_v2_5",
               language: formData.language || "en-US",
               enable_backchannel: true,
             });
