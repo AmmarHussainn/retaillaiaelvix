@@ -54,14 +54,46 @@ const PromptSection = ({ formData, handleInputChange }) => {
         <div className="flex items-center space-x-2 px-3 py-1.5 bg-gray-50 rounded-xl border border-gray-100">
           <Mic className="w-4 h-4 text-gray-400" />
           <select
-            name="s2s_model"
-            value={formData.s2s_model || ""}
-            onChange={handleInputChange}
+            name="voice_config"
+            value={formData.s2s_model ? formData.s2s_model : formData.voice_id}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val.includes("realtime")) {
+                // It's an S2S model
+                handleInputChange({
+                  target: { name: "s2s_model", value: val },
+                });
+                // We typically use a default voice or leave voice_id as is for S2S
+              } else {
+                // It's a standard voice
+                handleInputChange({ target: { name: "s2s_model", value: "" } });
+                handleInputChange({ target: { name: "voice_id", value: val } });
+              }
+            }}
             className="bg-transparent text-sm font-bold text-gray-700 outline-none pr-4"
           >
-            <option value="">Standard Voice</option>
-            <option value="gpt-4o-realtime">GPT-4o Realtime</option>
-            <option value="gpt-4o-mini-realtime">GPT-4o Mini Realtime</option>
+            <optgroup label="Realtime Models (S2S)">
+              <option value="gpt-4o-realtime">GPT-4o Realtime</option>
+              <option value="gpt-4o-mini-realtime">GPT-4o Mini Realtime</option>
+            </optgroup>
+            <optgroup label="Standard Voices (ElevenLabs)">
+              <option value="11labs-Adrian">Adrian</option>
+              <option value="11labs-Rachel">Rachel</option>
+              <option value="11labs-Sarah">Sarah</option>
+              <option value="11labs-Antoni">Antoni</option>
+              <option value="11labs-Thomas">Thomas</option>
+              <option value="11labs-Domi">Domi</option>
+              <option value="11labs-Josh">Josh</option>
+              <option value="11labs-Arnold">Arnold</option>
+              <option value="11labs-Bella">Bella</option>
+              <option value="11labs-Elli">Elli</option>
+              <option value="11labs-Sam">Sam</option>
+            </optgroup>
+            <optgroup label="Standard Voices (OpenAI)">
+              <option value="openai-Alloy">Alloy</option>
+              <option value="openai-Echo">Echo</option>
+              <option value="openai-Shimmer">Shimmer</option>
+            </optgroup>
           </select>
         </div>
 
