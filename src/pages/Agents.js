@@ -1,10 +1,19 @@
-import { Edit2, Mic, MoreVertical, Plus, Search, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import {
+  Edit2,
+  Mic,
+  MoreVertical,
+  Plus,
+  Search,
+  Trash2,
+  PhoneCall,
+} from "lucide-react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import CreateAgentModal from "../components/agents/CreateAgentModal";
 import ConfirmationModal from "../components/ui/ConfirmationModal";
 import { useToast } from "../context/ToastContext";
 import agentService from "../services/agentService";
+import WebCallModal from "../components/agents/WebCallModal";
 
 const Agents = () => {
   const navigate = useNavigate();
@@ -22,14 +31,10 @@ const Agents = () => {
 
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedAgentForCall, setSelectedAgentForCall] = useState(null);
   const toast = useToast();
 
-  // Fetch agents on mount
-  useEffect(() => {
-    fetchAgents();
-  }, []);
-
-  const fetchAgents = async () => {
+  const fetchAgents = useCallback(async () => {
     setIsLoading(true);
     try {
       const data = await agentService.getAllAgents();
@@ -52,7 +57,12 @@ const Agents = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [toast]);
+
+  // Fetch agents on mount
+  useEffect(() => {
+    fetchAgents();
+  }, [fetchAgents]);
 
   const handleAgentCreated = (newAgent) => {
     setAgents([newAgent, ...agents]);
@@ -69,14 +79,9 @@ const Agents = () => {
     }
   };
 
-  const handleAgentUpdated = (updatedAgent) => {
-    setAgents(
-      agents.map((a) =>
-        a.agent_id === updatedAgent.agent_id ? updatedAgent : a,
-      ),
-    );
-    toast.success("Agent updated successfully");
-  };
+  // handleAgentUpdated is currently defined but not used within this view
+  // as updates are handled by the LLM Editor and then navigating back.
+  // Keeping it for potential future local state parity needs.
 
   const handleDeleteClick = (agent) => {
     setAgentToDelete(agent);
@@ -237,6 +242,13 @@ const Agents = () => {
                   <Edit2 className="w-4 h-4" />
                 </button>
                 <button
+                  onClick={() => setSelectedAgentForCall(agent)}
+                  className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                  title="Test Web Call"
+                >
+                  <PhoneCall className="w-4 h-4" />
+                </button>
+                <button
                   onClick={(e) => {
                     e.stopPropagation();
                     handleDeleteClick(agent);
@@ -306,6 +318,14 @@ const Agents = () => {
         confirmText="Delete Agent"
         isDestructive={true}
       />
+
+      {selectedAgentForCall && (
+        <WebCallModal
+          onClose={() => setSelectedAgentForCall(null)}
+          agentId={selectedAgentForCall.agent_id}
+          agentName={selectedAgentForCall.agent_name}
+        />
+      )}
     </div>
   );
 };

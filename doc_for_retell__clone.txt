@@ -1,0 +1,413 @@
+https://aelvix-ai-backend.onrender.com
+
+// Define Routes
+app.use('/api/users', require('./routes/userRoutes'));
+app.use('/api/llms', require('./routes/llmRoutes'));
+app.use('/api/phones', require('./routes/phoneRoutes'));
+app.use('/api/kbs', require('./routes/kbRoutes'));
+app.use('/api/agents', require('./routes/agentRoutes'));
+
+
+
+LLM
+
+router.post('/', auth, llmController.createLlm);
+
+{
+  "model": "gpt-5",
+  "model_temperature": 0,
+  "general_prompt": "You are a receptionist at 'The Grand Hotel'. Your only job is to check guests in and answer basic questions about pool hours (9am-9pm). If they ask for a manager, use the transfer_call tool.",
+  "begin_message": "Thank you for calling The Grand Hotel, this is your virtual concierge. How can I help you today?",
+  "start_speaker": "agent",
+  "general_tools": [
+    {
+      "type": "end_call",
+      "name": "end_call",
+      "description": "End the call when the guest is finished."
+    },
+    {
+      "type": "transfer_call",
+      "name": "transfer_to_manager",
+      "description": "Transfer to the human manager for complaints.",
+      "transfer_destination": {
+        "type": "predefined",
+        "number": "+15550102030"
+      }
+    }
+  ]
+}
+
+
+
+router.get('/', auth, llmController.listLlms);
+
+router.get('/:id', auth, llmController.getLlm);
+
+Retell Llm id 
+
+
+
+router.patch('/:id', auth, llmController.updateLlm);
+Retell_llm_id 
+
+{ "model_temperature": 0.1, "begin_message": "Hi, how can I assist you?", "knowledge_base_ids": ["knowledge_base_d77a2e3054541f5a"] }
+
+
+
+router.delete('/:id', auth, llmController.deleteLlm);
+Retell llm id in params
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Knoledge base:
+
+
+Post https://aelvix-ai-backend.onrender.com/api/kbs 
+
+Form data 
+Knowledge_base_name       test
+Knowledge_base_texts  [{"title": "User Bio", "text": "Ahmed Raza is a freelance developer."}]
+Enable_auto_refresh   true
+Knowledge_base_urls https://docs.retellai.com/api-references/add-knowledge-base-sources
+Knowledge_base_files            pdf
+
+
+
+
+
+Patch   https://aelvix-ai-backend.onrender.com/api/kbs/:id/sources
+
+Id =  knowledge base id retell 
+
+Form data 
+Knowledge_base_name       test
+Knowledge_base_texts [{"title": "User Bio", "text": "Ahmed Raza is a freelance developer."}]
+Enable_auto_refresh   true
+Knowledge_base_urls https://docs.retellai.com/api-references/add-knowledge-base-sources
+Knowledge_base_files            pdf
+
+
+// List KBs
+router.get('/', auth, kbController.listKnowledgeBases);
+
+// Get KB
+router.get('/:id', auth, kbController.getKnowledgeBase);
+
+// Delete KB
+router.delete('/:id', auth, kbController.deleteKnowledgeBase);
+
+// Delete source
+router.delete('/:id/sources/:source_id', auth, kbController.deleteKbSource);
+
+
+
+
+
+Phone numbers
+
+
+
+// Base path: /api/phone-numbers
+router.post('/', auth, phoneController.createPhoneNumber);
+https://aelvix-ai-backend.onrender.com/api/phones
+{
+  "area_code": 310,
+  "nickname": "LA Office",
+  "toll_free": false,
+  "inbound_allowed_countries": ["US", "CA"]
+}
+
+router.get('/', auth, phoneController.listPhoneNumbers);
+
+// Parameterized routes (Number must be URL encoded, e.g., %2B1415...)
+router.get('/:number', auth, phoneController.getPhoneNumber);
+router.patch('/:number', auth, phoneController.updatePhoneNumber);
+router.delete('/:number', auth, phoneController.deletePhoneNumber);
+
+
+
+
+
+// Core CRUD
+router.post('/', auth, agentController.createAgent);           // Create
+https://aelvix-ai-backend.onrender.com/api/agents
+
+{
+  "agent_name": "Ultimate Test Agent",
+  "voice_id": "11labs-Adrian",
+  "voice_model": "eleven_turbo_v2_5",
+  "response_engine": {
+  "type": "retell-llm",
+  "llm_id": "llm_0a5efd24205c68eaad0752ee0619",
+  "version": 0
+},
+  "version_description": "Production v1.0 - Full feature test",
+  "language": "en-US",
+  "voice_temperature": 1.2,
+  "voice_speed": 1.0,
+  "volume": 1.0,
+  "responsiveness": 0.8,
+  "interruption_sensitivity": 0.5,
+  "enable_backchannel": true,
+  "backchannel_frequency": 0.8,
+  "backchannel_words": ["yeah", "uh-huh", "got it", "I see"],
+  "reminder_trigger_ms": 10000,
+  "reminder_max_count": 2,
+  "ambient_sound": "coffee-shop",
+  "ambient_sound_volume": 0.5,
+  "webhook_url": "https://your-api.com/webhooks/retell",
+  "webhook_timeout_ms": 5000,
+  "boosted_keywords": ["Aelvix", "Retell", "Ahmed"],
+  "data_storage_setting": "everything",
+  "opt_in_signed_url": true,
+  "signed_url_expiration_ms": 3600000,
+  "normalize_for_speech": true,
+  "end_call_after_silence_ms": 30000,
+  "max_call_duration_ms": 600000,
+  "begin_message_delay_ms": 1000,
+  "ring_duration_ms": 30000,
+  "stt_mode": "accurate",
+  "denoising_mode": "noise-and-background-speech-cancellation",
+  "vocab_specialization": "general",
+  "allow_user_dtmf": true,
+  "user_dtmf_options": {
+    "digit_limit": 10,
+    "termination_key": "#",
+    "timeout_ms": 5000
+  },
+  "fallback_voice_ids": ["openai-Alloy", "deepgram-Angus"],
+  "pronunciation_dictionary": [
+    {
+      "word": "Aelvix",
+      "alphabet": "ipa",
+      "phoneme": "ˈælvɪks"
+    }
+  ],
+  "voicemail_option": {
+    "action": {
+      "type": "static_text",
+      "text": "Hi, you've reached Ahmed. Please leave a message after the beep."
+    }
+  },
+  "pii_config": {
+    "mode": "post_call",
+    "categories": ["person_name", "phone_number", "email", "credit_card"]
+  },
+  "post_call_analysis_model": "gpt-4o",
+  "post_call_analysis_data": [
+    {
+      "type": "boolean",
+      "name": "is_satisfied",
+      "description": "Whether the customer seemed happy with the resolution."
+    },
+    {
+      "type": "string",
+      "name": "main_issue",
+      "description": "The primary reason the customer called."
+    },
+    {
+      "type": "enum",
+      "name": "urgency_level",
+      "description": "How urgent was the request?",
+      "choices": ["low", "medium", "high"]
+    }
+  ],
+  "analysis_successful_prompt": "The agent resolved the issue and the user said thank you.",
+  "analysis_summary_prompt": "Summarize the call in 3 concise bullet points focusing on the outcome."
+}
+
+
+
+
+
+router.get('/', auth, agentController.listAgents);             // List
+router.get('/:id', auth, agentController.getAgent);            // Get Single
+router.patch('/:id', auth, agentController.updateAgent);       // Update
+
+https://aelvix-ai-backend.onrender.com/api/agents/:{{agent_id}}
+
+{
+  "agent_name": "Updated 2 Professional Agent",
+  "voice_id": "11labs-Cimo",
+  "knowledge_base_ids": ["knowledge_base_2f46af0198a7c0dd"],
+  "responsiveness": 1.0,
+  "interruption_sensitivity": 0.2,
+  "ambient_sound": "summer-outdoor",
+  "ambient_sound_volume": 0.2,
+  "enable_backchannel": true,
+  "voice_speed": 1.1,
+  "voice_temperature": 1.0,
+  "boosted_keywords": ["Aelvix Solutions", "Ahmed", "Support"],
+  "webhook_url": "https://your-api.com/webhooks/updated-path"
+}
+
+router.delete('/:id', auth, agentController.deleteAgent);      // Delete
+
+// Specialized Versioning
+router.post('/:id/publish', auth, agentController.publishAgent);   // Publish
+router.get('/:id/versions', auth, agentController.getAgentVersions); // Versions
+
+
+
+
+
+
+
+
+
+
+
+https://aelvix-ai-backend.onrender.com/api/agents
+
+
+Patch
+
+https://aelvix-ai-backend.onrender.com/api/agents/:{{agent_id}} 
+Example : agent_ea58901fd22595fe2c3f010676
+
+Body:
+
+
+{
+    "message": "Agent updated successfully",
+    "retell": {
+        "agent_id": "agent_ea58901fd22595fe2c3f010676",
+        "channel": "voice",
+        "last_modification_timestamp": 1767871640486,
+        "agent_name": "Hamza 2 Professional Agent",
+        "version_description": "Production v1.0 - Full feature test",
+        "response_engine": {
+            "type": "retell-llm",
+            "llm_id": "llm_0a5efd24205c68eaad0752ee0619",
+            "version": 0
+        },
+        "webhook_url": "https://your-api.com/webhooks/updated-path",
+        "webhook_timeout_ms": 5000,
+        "language": "en-US",
+        "data_storage_setting": "everything",
+        "opt_in_signed_url": true,
+        "signed_url_expiration_ms": 3600000,
+        "end_call_after_silence_ms": 30000,
+        "post_call_analysis_data": [
+            {
+                "type": "boolean",
+                "name": "is_satisfied",
+                "description": "Whether the customer seemed happy with the resolution."
+            },
+            {
+                "type": "string",
+                "name": "main_issue",
+                "description": "The primary reason the customer called."
+            },
+            {
+                "name": "urgency_level",
+                "description": "How urgent was the request?",
+                "type": "enum",
+                "choices": [
+                    "low",
+                    "medium",
+                    "high"
+                ]
+            }
+        ],
+        "version": 0,
+        "is_published": false,
+        "post_call_analysis_model": "gpt-4o",
+        "pii_config": {
+            "mode": "post_call",
+            "categories": [
+                "person_name",
+                "phone_number",
+                "email",
+                "credit_card"
+            ]
+        },
+        "analysis_successful_prompt": "The agent resolved the issue and the user said thank you.",
+        "analysis_summary_prompt": "Summarize the call in 3 concise bullet points focusing on the outcome.",
+        "voice_id": "11labs-Cimo",
+        "voice_model": "eleven_turbo_v2_5",
+        "fallback_voice_ids": [
+            "openai-Alloy",
+            "deepgram-Angus"
+        ],
+        "voice_temperature": 1,
+        "voice_speed": 1.1,
+        "volume": 1,
+        "enable_backchannel": true,
+        "backchannel_frequency": 0.8,
+        "backchannel_words": [
+            "yeah",
+            "uh-huh",
+            "got it",
+            "I see"
+        ],
+        "reminder_trigger_ms": 10000,
+        "reminder_max_count": 2,
+        "max_call_duration_ms": 600000,
+        "interruption_sensitivity": 0.2,
+        "boosted_keywords": [
+            "Aelvix Solutions",
+            "Ahmed",
+            "Support"
+        ],
+        "ambient_sound": "summer-outdoor",
+        "ambient_sound_volume": 0.2,
+        "responsiveness": 1,
+        "pronunciation_dictionary": [
+            {
+                "word": "Aelvix",
+                "alphabet": "ipa",
+                "phoneme": "ˈælvɪks"
+            }
+        ],
+        "normalize_for_speech": true,
+        "begin_message_delay_ms": 1000,
+        "ring_duration_ms": 30000,
+        "voicemail_option": {
+            "action": {
+                "type": "static_text",
+                "text": "Hi, you've reached Ahmed. Please leave a message after the beep."
+            }
+        },
+        "stt_mode": "accurate",
+        "vocab_specialization": "general",
+        "allow_user_dtmf": true,
+        "user_dtmf_options": {
+            "digit_limit": 10,
+            "termination_key": "#",
+            "timeout_ms": 5000
+        },
+        "denoising_mode": "noise-and-background-speech-cancellation"
+    },
+    "local": {
+        "_id": "695f943aa1e491d049947121",
+        "userId": "6958cc09f623cd06e793baf5",
+        "agent_id": "agent_ea58901fd22595fe2c3f010676",
+        "agent_name": "Hamza 2 Professional Agent",
+        "voice_id": "11labs-Cimo",
+        "llm_id": "llm_0a5efd24205c68eaad0752ee0619",
+        "status": "active",
+        "createdAt": "2026-01-08T11:25:46.034Z",
+        "updatedAt": "2026-01-08T11:27:20.505Z",
+        "__v": 0
+    }
+}
+
+
+

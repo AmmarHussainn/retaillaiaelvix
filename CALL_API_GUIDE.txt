@@ -1,0 +1,749 @@
+================================================================================
+                    AELVIX AI - CALL API INTEGRATION GUIDE
+                         For Frontend Developers
+================================================================================
+
+📋 TABLE OF CONTENTS
+--------------------
+1. Overview
+2. Authentication
+3. API Endpoints
+4. Integration Examples
+5. Web Call Integration (Step-by-Step)
+6. Phone Call Integration
+7. Error Handling
+8. Best Practices
+
+
+================================================================================
+1. OVERVIEW
+================================================================================
+
+This guide covers the Call API endpoints for integrating voice AI functionality
+into your frontend application. The backend supports both:
+  • Web Calls (browser-based voice calls)
+  • Phone Calls (traditional phone number calls)
+
+Base URL: http://localhost:5000/api/calls
+(Update this to your production URL when deploying)
+
+
+================================================================================
+2. AUTHENTICATION
+================================================================================
+
+All API requests require JWT authentication.
+
+Step 1: Login to get token
+---------------------------
+POST /api/users/login
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "password": "yourpassword"
+}
+
+Response:
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": { ... }
+}
+
+Step 2: Include token in all requests
+--------------------------------------
+Authorization: Bearer <your_token>
+
+
+================================================================================
+3. API ENDPOINTS
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│ ENDPOINT                        │ METHOD │ DESCRIPTION                  │
+├─────────────────────────────────────────────────────────────────────────┤
+│ /api/calls/web                  │ POST   │ Create web call              │
+│ /api/calls/phone                │ POST   │ Create phone call            │
+│ /api/calls/:call_id             │ GET    │ Get call details             │
+│ /api/calls/list                 │ POST   │ List calls with filters      │
+│ /api/calls/:call_id             │ PATCH  │ Update call metadata         │
+│ /api/calls/:call_id/end         │ POST   │ End ongoing call             │
+│ /api/calls/:call_id             │ DELETE │ Delete call & data           │
+└─────────────────────────────────────────────────────────────────────────┘
+
+
+================================================================================
+4. INTEGRATION EXAMPLES
+================================================================================
+
+4.1 CREATE WEB CALL
+-------------------
+Use this to start a browser-based voice conversation with an AI agent.
+
+POST /api/calls/web
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "agent_id": "oBeDLoLOeuAbiuaMFXRtDOLriTJ5tSxD",
+  "metadata": {
+    "user_id": "12345",
+    "session_type": "support"
+  },
+  "retell_llm_dynamic_variables": {
+    "customer_name": "John Doe",
+    "account_type": "premium"
+  }
+}
+
+Response (201 Created):
+{
+  "_id": "...",
+  "userId": "...",
+  "call_id": "call_abc123xyz",
+  "call_type": "web_call",
+  "agent_id": "oBeDLoLOeuAbiuaMFXRtDOLriTJ5tSxD",
+  "call_status": "registered",
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",  ⭐ IMPORTANT!
+  "metadata": { ... },
+  "createdAt": "2026-01-28T..."
+}
+
+⚠️ IMPORTANT: Save the "access_token" - you'll need it to connect to the call!
+
+
+4.2 CREATE PHONE CALL
+---------------------
+Use this to initiate an outbound phone call to a real phone number.
+
+POST /api/calls/phone
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "from_number": "+14157774444",
+  "to_number": "+12137774445",
+  "override_agent_id": "oBeDLoLOeuAbiuaMFXRtDOLriTJ5tSxD",
+  "metadata": {
+    "campaign": "customer_outreach"
+  },
+  "retell_llm_dynamic_variables": {
+    "customer_name": "Jane Smith"
+  }
+}
+
+Response (201 Created):
+{
+  "call_id": "call_xyz789",
+  "call_type": "phone_call",
+  "from_number": "+14157774444",
+  "to_number": "+12137774445",
+  "call_status": "registered",
+  "direction": "outbound",
+  ...
+}
+
+
+4.3 GET CALL DETAILS
+--------------------
+Retrieve current status and details of a call.
+
+GET /api/calls/call_abc123xyz
+Authorization: Bearer <token>
+
+Response (200 OK):
+{
+  "call_id": "call_abc123xyz",
+  "call_status": "ongoing",  // or "registered", "ended", "error"
+  "agent_id": "...",
+  "start_timestamp": 1706400000,
+  "transcript": "...",       // Available after call ends
+  "recording_url": "...",    // Available after call ends
+  "public_log_url": "...",
+  ...
+}
+
+
+4.4 LIST CALLS
+--------------
+Get a filtered list of calls.
+
+POST /api/calls/list
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "filter_criteria": {
+    "agent_id": ["oBeDLoLOeuAbiuaMFXRtDOLriTJ5tSxD"],
+    "call_status": ["ended"],
+    "call_type": ["web_call"]
+  },
+  "sort_order": "descending",
+  "limit": 50
+}
+
+Response (200 OK):
+[
+  { "call_id": "...", "call_status": "ended", ... },
+  { "call_id": "...", "call_status": "ended", ... }
+]
+
+
+4.5 UPDATE CALL
+---------------
+Update metadata or settings during/after a call.
+
+PATCH /api/calls/call_abc123xyz
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "metadata": {
+    "notes": "Customer requested callback",
+    "satisfaction": "high"
+  }
+}
+
+Response (200 OK):
+{
+  "call_id": "call_abc123xyz",
+  "metadata": {
+    "notes": "Customer requested callback",
+    "satisfaction": "high"
+  },
+  ...
+}
+
+
+4.6 END CALL
+------------
+Manually terminate an ongoing call.
+
+POST /api/calls/call_abc123xyz/end
+Authorization: Bearer <token>
+
+Response (200 OK):
+{
+  "message": "Call ended successfully",
+  "call_id": "call_abc123xyz",
+  "call_status": "ended"
+}
+
+Error Response (400 Bad Request):
+{
+  "error": "Call has already ended",
+  "call_status": "ended"
+}
+
+
+4.7 DELETE CALL
+---------------
+Delete a call and all its associated data.
+
+DELETE /api/calls/call_abc123xyz
+Authorization: Bearer <token>
+
+Response (200 OK):
+{
+  "message": "Call deleted successfully"
+}
+
+
+================================================================================
+5. WEB CALL INTEGRATION (STEP-BY-STEP)
+================================================================================
+
+This section shows how to integrate web calls into your React/JavaScript frontend.
+
+STEP 1: Install Retell Web SDK
+-------------------------------
+npm install @retellai/retell-client-js-sdk
+
+Or using CDN:
+<script src="https://unpkg.com/@retellai/retell-client-js-sdk/dist/web-client.min.js"></script>
+
+
+STEP 2: Create Web Call from Backend
+-------------------------------------
+// In your React component or JavaScript file
+
+const createWebCall = async (agentId) => {
+  try {
+    const response = await fetch('http://localhost:5000/api/calls/web', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${yourAuthToken}`
+      },
+      body: JSON.stringify({
+        agent_id: agentId,
+        metadata: {
+          user_id: currentUser.id,
+          session_type: 'support'
+        },
+        retell_llm_dynamic_variables: {
+          customer_name: currentUser.name
+        }
+      })
+    });
+
+    const data = await response.json();
+
+    // IMPORTANT: Save these values!
+    const callId = data.call_id;
+    const accessToken = data.access_token;
+
+    return { callId, accessToken };
+  } catch (error) {
+    console.error('Error creating web call:', error);
+    throw error;
+  }
+};
+
+
+STEP 3: Connect to Web Call Using Retell SDK
+---------------------------------------------
+import { RetellWebClient } from '@retellai/retell-client-js-sdk';
+
+const startVoiceCall = async (agentId) => {
+  // Step 1: Create call and get access token
+  const { callId, accessToken } = await createWebCall(agentId);
+
+  // Step 2: Initialize Retell Web Client
+  const retellWebClient = new RetellWebClient();
+
+  // Step 3: Set up event listeners
+  retellWebClient.on('call_started', () => {
+    console.log('Call started');
+    // Update UI: Show "Connected" status
+  });
+
+  retellWebClient.on('call_ended', () => {
+    console.log('Call ended');
+    // Update UI: Show "Call Ended" status
+    // Optionally fetch call transcript/recording
+  });
+
+  retellWebClient.on('agent_start_talking', () => {
+    console.log('Agent is speaking');
+    // Update UI: Show speaking indicator
+  });
+
+  retellWebClient.on('agent_stop_talking', () => {
+    console.log('Agent stopped speaking');
+    // Update UI: Hide speaking indicator
+  });
+
+  retellWebClient.on('error', (error) => {
+    console.error('Call error:', error);
+    // Update UI: Show error message
+  });
+
+  retellWebClient.on('update', (update) => {
+    console.log('Call update:', update);
+    // Handle real-time updates (transcript, etc.)
+  });
+
+  // Step 4: Start the call
+  await retellWebClient.startCall({
+    accessToken: accessToken,
+    sampleRate: 24000, // Optional: 24000 or 16000
+    enableUpdate: true  // Enable real-time updates
+  });
+
+  return { retellWebClient, callId };
+};
+
+
+STEP 4: End the Call
+--------------------
+// Option 1: User clicks "Hang Up" button
+const endCall = async (retellWebClient, callId) => {
+  // Stop the web client (disconnects WebSocket)
+  retellWebClient.stopCall();
+
+  // Optionally notify backend to update call status
+  await fetch(`http://localhost:5000/api/calls/${callId}/end`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${yourAuthToken}`
+    }
+  });
+};
+
+// Option 2: Backend terminates the call
+const terminateCallFromBackend = async (callId) => {
+  await fetch(`http://localhost:5000/api/calls/${callId}/end`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${yourAuthToken}`
+    }
+  });
+};
+
+
+STEP 5: Complete React Component Example
+-----------------------------------------
+import React, { useState } from 'react';
+import { RetellWebClient } from '@retellai/retell-client-js-sdk';
+
+function VoiceCallComponent({ agentId, authToken }) {
+  const [isCallActive, setIsCallActive] = useState(false);
+  const [callStatus, setCallStatus] = useState('idle');
+  const [retellClient, setRetellClient] = useState(null);
+  const [currentCallId, setCurrentCallId] = useState(null);
+
+  const startCall = async () => {
+    try {
+      setCallStatus('connecting');
+
+      // Create call on backend
+      const response = await fetch('http://localhost:5000/api/calls/web', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`
+        },
+        body: JSON.stringify({ agent_id: agentId })
+      });
+
+      const { call_id, access_token } = await response.json();
+      setCurrentCallId(call_id);
+
+      // Initialize Retell client
+      const client = new RetellWebClient();
+
+      client.on('call_started', () => {
+        setCallStatus('connected');
+        setIsCallActive(true);
+      });
+
+      client.on('call_ended', () => {
+        setCallStatus('ended');
+        setIsCallActive(false);
+      });
+
+      client.on('error', (error) => {
+        console.error('Call error:', error);
+        setCallStatus('error');
+        setIsCallActive(false);
+      });
+
+      // Start the call
+      await client.startCall({ accessToken: access_token });
+      setRetellClient(client);
+
+    } catch (error) {
+      console.error('Failed to start call:', error);
+      setCallStatus('error');
+    }
+  };
+
+  const endCall = async () => {
+    if (retellClient) {
+      retellClient.stopCall();
+    }
+
+    if (currentCallId) {
+      await fetch(`http://localhost:5000/api/calls/${currentCallId}/end`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${authToken}` }
+      });
+    }
+
+    setIsCallActive(false);
+    setCallStatus('idle');
+  };
+
+  return (
+    <div>
+      <h2>Voice AI Call</h2>
+      <p>Status: {callStatus}</p>
+
+      {!isCallActive ? (
+        <button onClick={startCall}>Start Call</button>
+      ) : (
+        <button onClick={endCall}>End Call</button>
+      )}
+    </div>
+  );
+}
+
+export default VoiceCallComponent;
+
+
+================================================================================
+6. PHONE CALL INTEGRATION
+================================================================================
+
+Phone calls are initiated from the backend and don't require frontend WebSocket
+connection. The frontend's role is to:
+  1. Trigger the call
+  2. Monitor call status
+  3. Display call results/transcript after completion
+
+
+EXAMPLE: Initiate Outbound Phone Call
+--------------------------------------
+const makePhoneCall = async (fromNumber, toNumber, agentId) => {
+  try {
+    const response = await fetch('http://localhost:5000/api/calls/phone', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${yourAuthToken}`
+      },
+      body: JSON.stringify({
+        from_number: fromNumber,
+        to_number: toNumber,
+        override_agent_id: agentId,
+        metadata: {
+          campaign: 'customer_outreach',
+          initiated_by: 'dashboard'
+        },
+        retell_llm_dynamic_variables: {
+          customer_name: 'John Doe',
+          account_number: '12345'
+        }
+      })
+    });
+
+    const callData = await response.json();
+    console.log('Call initiated:', callData.call_id);
+
+    // Start polling for call status
+    pollCallStatus(callData.call_id);
+
+    return callData;
+  } catch (error) {
+    console.error('Error making phone call:', error);
+    throw error;
+  }
+};
+
+
+EXAMPLE: Monitor Call Status
+-----------------------------
+const pollCallStatus = async (callId) => {
+  const interval = setInterval(async () => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/calls/${callId}`, {
+        headers: {
+          'Authorization': `Bearer ${yourAuthToken}`
+        }
+      });
+
+      const callData = await response.json();
+      console.log('Call status:', callData.call_status);
+
+      // Update UI based on status
+      if (callData.call_status === 'ongoing') {
+        // Show "Call in progress..."
+      } else if (callData.call_status === 'ended') {
+        // Show transcript, recording, etc.
+        clearInterval(interval);
+        displayCallResults(callData);
+      } else if (callData.call_status === 'error') {
+        // Show error message
+        clearInterval(interval);
+      }
+
+    } catch (error) {
+      console.error('Error polling call status:', error);
+      clearInterval(interval);
+    }
+  }, 3000); // Poll every 3 seconds
+};
+
+
+EXAMPLE: Display Call Results
+------------------------------
+const displayCallResults = (callData) => {
+  console.log('Call ended at:', new Date(callData.end_timestamp));
+  console.log('Transcript:', callData.transcript);
+  console.log('Recording URL:', callData.recording_url);
+  console.log('Public Log:', callData.public_log_url);
+
+  // Update your UI with this data
+};
+
+
+================================================================================
+7. ERROR HANDLING
+================================================================================
+
+Common Errors and How to Handle Them
+-------------------------------------
+
+ERROR 1: 401 Unauthorized
+{
+  "error": "No token provided"
+}
+→ Solution: Ensure Authorization header is included with valid JWT token
+
+
+ERROR 2: 403 Forbidden
+{
+  "error": "Unauthorized or call not found"
+}
+→ Solution: User doesn't own this call or call doesn't exist
+
+
+ERROR 3: 400 Bad Request
+{
+  "error": "Call has already ended",
+  "call_status": "ended"
+}
+→ Solution: Cannot end a call that's already ended
+
+
+ERROR 4: 404 Not Found
+{
+  "error": "Agent not found"
+}
+→ Solution: The agent_id doesn't exist. Create agent first or use valid agent_id
+
+
+ERROR 5: 500 Internal Server Error
+{
+  "error": "Retell API error message"
+}
+→ Solution: Check server logs, verify RETELL_API_KEY is configured
+
+
+EXAMPLE: Error Handling in Frontend
+------------------------------------
+const createWebCallWithErrorHandling = async (agentId) => {
+  try {
+    const response = await fetch('http://localhost:5000/api/calls/web', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${yourAuthToken}`
+      },
+      body: JSON.stringify({ agent_id: agentId })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+
+      switch (response.status) {
+        case 401:
+          throw new Error('Authentication required. Please login again.');
+        case 403:
+          throw new Error('You do not have permission to access this resource.');
+        case 404:
+          throw new Error('Agent not found. Please select a valid agent.');
+        case 500:
+          throw new Error('Server error. Please try again later.');
+        default:
+          throw new Error(errorData.error || 'An unexpected error occurred');
+      }
+    }
+
+    return await response.json();
+
+  } catch (error) {
+    console.error('Error creating web call:', error);
+    // Display error to user
+    alert(error.message);
+    throw error;
+  }
+};
+
+
+================================================================================
+8. BEST PRACTICES
+================================================================================
+
+✅ SECURITY
+-----------
+• Never expose your JWT token in client-side code or version control
+• Store tokens securely (httpOnly cookies or secure storage)
+• Implement token refresh mechanism for long sessions
+• Validate user permissions before initiating calls
+
+
+✅ WEB CALL BEST PRACTICES
+---------------------------
+• Always save the access_token from createWebCall response
+• Handle microphone permissions gracefully
+• Provide clear UI feedback for call states (connecting, connected, ended)
+• Implement proper cleanup when component unmounts
+• Test with different browsers (Chrome, Firefox, Safari)
+• Handle network disconnections gracefully
+
+
+✅ PHONE CALL BEST PRACTICES
+-----------------------------
+• Validate phone numbers before making calls (E.164 format: +1234567890)
+• Implement rate limiting to prevent abuse
+• Poll call status at reasonable intervals (3-5 seconds)
+• Store call results (transcript, recording) for later review
+• Provide user feedback during call progress
+
+
+✅ PERFORMANCE
+--------------
+• Cache agent IDs to avoid repeated lookups
+• Implement pagination when listing calls
+• Use filters in listCalls to reduce data transfer
+• Clean up old call records periodically
+
+
+✅ USER EXPERIENCE
+------------------
+• Show loading states during API calls
+• Provide clear error messages
+• Allow users to cancel ongoing operations
+• Display call duration in real-time
+• Offer transcript download after call ends
+
+
+✅ MONITORING & DEBUGGING
+-------------------------
+• Log all API calls for debugging
+• Track call success/failure rates
+• Monitor call duration and quality
+• Use public_log_url from Retell for detailed call analysis
+• Implement analytics to track usage patterns
+
+
+================================================================================
+QUICK REFERENCE: CALL STATUS VALUES
+================================================================================
+
+┌────────────────┬──────────────────────────────────────────────────────────┐
+│ STATUS         │ DESCRIPTION                                              │
+├────────────────┼──────────────────────────────────────────────────────────┤
+│ registered     │ Call created but not yet started                         │
+│ ongoing        │ Call is currently active                                 │
+│ ended          │ Call has completed successfully                          │
+│ error          │ Call encountered an error                                │
+└────────────────┴──────────────────────────────────────────────────────────┘
+
+
+================================================================================
+ADDITIONAL RESOURCES
+================================================================================
+
+• Retell AI Documentation: https://docs.retellai.com
+• Retell Web SDK: https://www.npmjs.com/package/@retellai/retell-client-js-sdk
+• Backend API Source: controllers/callController.js
+• Call Model Schema: models/Call.js
+• API Routes: routes/callRoutes.js
+
+
+================================================================================
+SUPPORT
+================================================================================
+
+For backend issues or questions, contact your backend development team.
+For Retell AI platform issues, visit: https://docs.retellai.com/support
+
+
+================================================================================
+                              END OF GUIDE
+================================================================================
+
+
