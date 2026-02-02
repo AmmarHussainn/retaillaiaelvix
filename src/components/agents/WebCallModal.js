@@ -1,95 +1,113 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   X,
   Mic,
-  MicOff,
+  // MicOff,
   PhoneOff,
   Loader2,
   Volume2,
   User,
   AlertCircle,
 } from "lucide-react";
-// Using CDN for Retell SDK - no local import needed
 import { callService } from "../../services/callService";
 import { useToast } from "../../context/ToastContext";
+import { RetellWebClient } from "retell-client-js-sdk";
 
 const WebCallModal = ({ onClose, agentId, agentName }) => {
-  const [callStatus, setCallStatus] = useState("idle"); // idle, connecting, ongoing, ended, error
+  const [callStatus, setCallStatus] = useState("idle");
   const [isAgentSpeaking, setIsAgentSpeaking] = useState(false);
-  const [isMicMuted, setIsMicMuted] = useState(false);
+  // const [isMicMuted, setIsMicMuted] = useState(false);
   const [error, setError] = useState(null);
 
   const retellClientRef = useRef(null);
+  const hasStartedRef = useRef(false); // 🔥 prevents double start
   const toast = useToast();
 
-  const startCall = useCallback(async () => {
-    setCallStatus("connecting");
-    try {
-      // 1. Create call on backend
-      const data = await callService.createWebCall(agentId);
-
-      // 2. Initialize SDK from global window object
-      const RetellWebClient = window.RetellWebClient;
-      if (!RetellWebClient) {
-        throw new Error("Retell SDK not loaded. Please check your connection.");
-      }
-
-      const client = new RetellWebClient();
-      retellClientRef.current = client;
-
-      // 3. Set up listeners
-      client.on("call_started", () => {
-        setCallStatus("ongoing");
-        toast.success("Call connected");
-      });
-
-      client.on("call_ended", () => {
-        setCallStatus("ended");
-      });
-
-      client.on("agent_start_talking", () => setIsAgentSpeaking(true));
-      client.on("agent_stop_talking", () => setIsAgentSpeaking(false));
-
-      client.on("error", (err) => {
-        console.error("SDK Error:", err);
-        setError("Connection error. Please check your microphone.");
-        setCallStatus("error");
-      });
-
-      // 4. Start the call
-      await client.startCall({
-        accessToken: data.access_token,
-        sampleRate: 24000,
-        enableUpdate: true,
-      });
-    } catch (err) {
-      console.error("Start call error:", err);
-      setError(err.response?.data?.error || "Failed to initialize call");
-      setCallStatus("error");
-    }
-  }, [agentId, toast]);
-
   useEffect(() => {
+    if (hasStartedRef.current) return; // 🔥 STOP double execution
+    hasStartedRef.current = true;
+
+    const startCall = async () => {
+      try {
+        setCallStatus("connecting");
+        const data = await callService.createWebCall(agentId);
+
+        const client = new RetellWebClient();
+        retellClientRef.current = client;
+
+        client.on("call_started", () => {
+          setCallStatus("ongoing");
+          toast.success("Call connected");
+        });
+
+        client.on("call_ended", () => {
+          setCallStatus("ended");
+        });
+
+        client.on("agent_start_talking", () => setIsAgentSpeaking(true));
+        client.on("agent_stop_talking", () => setIsAgentSpeaking(false));
+
+        client.on("error", (err) => {
+          console.error("SDK Error:", err);
+          setError("Connection error. Please check your microphone.");
+          setCallStatus("error");
+        });
+
+        await client.startCall({
+          accessToken: data.access_token,
+          sampleRate: 24000,
+          emitRawAudioSamples: false,
+        });
+      } catch (err) {
+        console.error("Start call error details:", err);
+        const errorMessage =
+          err.response?.data?.error ||
+          err.message ||
+          "Failed to initialize call";
+        setError(errorMessage);
+        setCallStatus("error");
+        toast.error(`Call failed: ${errorMessage}`);
+      }
+    };
+
     startCall();
+
     return () => {
       if (retellClientRef.current) {
         retellClientRef.current.stopCall();
+        retellClientRef.current = null;
       }
     };
-  }, [startCall]);
+  }, [agentId, toast]);
 
-  const handleEndCall = () => {
+  const handleEndCall = async () => {
     if (retellClientRef.current) {
-      retellClientRef.current.stopCall();
+      try {
+        await retellClientRef.current.stopCall();
+      } catch (e) {
+        console.warn("Stop error:", e);
+      }
+      retellClientRef.current = null;
     }
     setCallStatus("ended");
   };
 
-  const toggleMute = () => {
-    // Note: Mute functionality might depend on SDK version/capabilities
-    // If SDK doesn't support directly, we could implement via MediaStream
-    setIsMicMuted(!isMicMuted);
+  /* Commenting out mute logic as requested
+  const toggleMute = async () => {
+    if (!retellClientRef.current) return;
+
+    try {
+      const newMutedState = !isMicMuted;
+
+      await retellClientRef.current.setMicrophoneEnabled(!newMutedState);
+
+      setIsMicMuted(newMutedState);
+    } catch (err) {
+      console.error("Mute error:", err);
+    }
   };
+  */
+  console.log(retellClientRef.current);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-lg">
@@ -98,7 +116,11 @@ const WebCallModal = ({ onClose, agentId, agentName }) => {
         <div className="px-8 py-6 flex justify-between items-center border-b border-gray-50 bg-gray-50/30">
           <div className="flex items-center space-x-3">
             <div
-              className={`p-2 rounded-xl ${callStatus === "ongoing" ? "bg-green-100 text-green-600" : "bg-blue-100 text-blue-600"}`}
+              className={`p-2 rounded-xl ${
+                callStatus === "ongoing"
+                  ? "bg-green-100 text-green-600"
+                  : "bg-blue-100 text-blue-600"
+              }`}
             >
               <Volume2 className="w-6 h-6" />
             </div>
@@ -126,10 +148,14 @@ const WebCallModal = ({ onClose, agentId, agentName }) => {
             {callStatus === "ongoing" && (
               <>
                 <div
-                  className={`absolute inset-[-20px] rounded-full border-2 border-blue-400/20 animate-ping duration-[3000ms] ${isAgentSpeaking ? "opacity-100" : "opacity-0"}`}
+                  className={`absolute inset-[-20px] rounded-full border-2 border-blue-400/20 animate-ping duration-[3000ms] ${
+                    isAgentSpeaking ? "opacity-100" : "opacity-0"
+                  }`}
                 ></div>
                 <div
-                  className={`absolute inset-[-40px] rounded-full border-2 border-blue-400/10 animate-ping duration-[4000ms] ${isAgentSpeaking ? "opacity-100" : "opacity-0"}`}
+                  className={`absolute inset-[-40px] rounded-full border-2 border-blue-400/10 animate-ping duration-[4000ms] ${
+                    isAgentSpeaking ? "opacity-100" : "opacity-0"
+                  }`}
                 ></div>
               </>
             )}
@@ -187,9 +213,14 @@ const WebCallModal = ({ onClose, agentId, agentName }) => {
         <div className="p-8 border-t border-gray-100 bg-gray-50/50 flex items-center justify-center space-x-6">
           {callStatus === "ongoing" ? (
             <>
+              {/* Mute button commented out for now
               <button
                 onClick={toggleMute}
-                className={`p-5 rounded-2xl transition-all border shadow-sm active:scale-90 ${isMicMuted ? "bg-red-50 text-red-600 border-red-100" : "bg-white text-gray-600 border-gray-200 hover:bg-gray-100"}`}
+                className={`p-5 rounded-2xl transition-all border shadow-sm active:scale-90 ${
+                  isMicMuted
+                    ? "bg-red-50 text-red-600 border-red-100"
+                    : "bg-white text-gray-600 border-gray-200 hover:bg-gray-100"
+                }`}
               >
                 {isMicMuted ? (
                   <MicOff className="w-6 h-6" />
@@ -197,6 +228,7 @@ const WebCallModal = ({ onClose, agentId, agentName }) => {
                   <Mic className="w-6 h-6" />
                 )}
               </button>
+              */}
 
               <button
                 onClick={handleEndCall}
