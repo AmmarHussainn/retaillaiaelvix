@@ -107,7 +107,6 @@ const WebCallModal = ({ onClose, agentId, agentName }) => {
     }
   };
   */
-  console.log(retellClientRef.current);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-lg">

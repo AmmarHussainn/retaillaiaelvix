@@ -15,6 +15,7 @@ import KnowledgeBase from "./pages/KnowledgeBase";
 import PhoneNumbers from "./pages/PhoneNumbers";
 import Settings from "./pages/Settings";
 import LLMEditor from "./pages/LLMEditor";
+import CallAnalytics from "./pages/CallAnalytics";
 import "./index.css";
 
 // Placeholder components for now
@@ -42,6 +43,7 @@ function App() {
                 <Route path="llms/edit/:id" element={<LLMEditor />} />
                 <Route path="knowledge-base" element={<KnowledgeBase />} />
                 <Route path="phone-numbers" element={<PhoneNumbers />} />
+                <Route path="call-analytics" element={<CallAnalytics />} />
                 {/* <Route path="settings" element={<Settings />} /> */}
               </Route>
             </Route>

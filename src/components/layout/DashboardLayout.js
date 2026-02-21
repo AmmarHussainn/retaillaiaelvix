@@ -8,6 +8,7 @@ import {
   Settings,
   LogOut,
   MessageSquare,
+  PhoneCall,
 } from "lucide-react";
 
 const DashboardLayout = () => {
@@ -23,6 +24,7 @@ const DashboardLayout = () => {
     { name: "Agents", path: "/agents", icon: Users },
     { name: "Knowledge Base", path: "/knowledge-base", icon: Database },
     { name: "Phone Number", path: "/phone-numbers", icon: Phone },
+    { name: "Call Logs", path: "/call-analytics", icon: PhoneCall },
     // { name: 'Settings', path: '/settings', icon: Settings },
   ];
 
