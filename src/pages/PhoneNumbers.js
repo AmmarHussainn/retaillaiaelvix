@@ -11,6 +11,7 @@ import {
   MessageSquare,
   Copy,
   MoreVertical,
+  User,
 } from "lucide-react";
 import { phoneNumberService } from "../services/phoneNumberService";
 import agentService from "../services/agentService";
@@ -213,7 +214,7 @@ const PhoneNumbers = () => {
                     {formatPhoneNumber(selectedNumber.phone_number)}
                   </h1>
                   <button className="p-1 text-gray-400 hover:text-gray-900 transition-colors">
-                    <Edit2 className="w-4.5 h-4.5" />
+                    <Edit2 className="w-4 h-4" />
                   </button>
                 </div>
                 <div className="flex items-center space-x-2 text-[13px] text-gray-500 font-medium">
@@ -239,14 +240,10 @@ const PhoneNumbers = () => {
               <div className="flex space-x-2">
                 <button
                   onClick={() => setIsMakeCallModalOpen(true)}
-                  className="flex items-center px-4.5 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-50 shadow-sm transition-all"
+                  className="flex items-center px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-50 shadow-sm transition-all"
                 >
                   <PhoneCall className="w-4 h-4 mr-2.5" />
                   Make an outbound call
-                </button>
-                <button className="flex items-center px-4.5 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-50 shadow-sm transition-all">
-                  <MessageSquare className="w-4 h-4 mr-2.5" />
-                  Make an outbound SMS
                 </button>
                 <div className="relative group">
                   <button className="p-2.5 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 shadow-sm transition-all">
@@ -285,13 +282,18 @@ const PhoneNumbers = () => {
                       <ExternalLink className="w-4 h-4" />
                     </button>
                   </div>
-                  <div className="relative">
+                  <div className="relative group">
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors pointer-events-none">
+                      <User className="w-5 h-5" />
+                    </div>
                     <select
                       id="inboundAgentSelect"
-                      className="w-full p-4.5 bg-white border border-gray-200 rounded-2xl text-gray-900 focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 outline-none appearance-none font-medium text-sm transition-all"
+                      className="w-full pl-12 pr-12 py-4 bg-gray-50/50 border border-gray-200 rounded-2xl text-gray-900 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none appearance-none font-bold text-sm transition-all cursor-pointer hover:bg-white hover:border-gray-300 hover:shadow-sm"
                       value={selectedNumber.inbound_agent_id || ""}
                       onChange={(e) =>
-                        handleUpdateNumber({ inbound_agent_id: e.target.value })
+                        handleUpdateNumber({
+                          inbound_agent_id: e.target.value,
+                        })
                       }
                     >
                       <option value="">Select an agent...</option>
@@ -301,25 +303,10 @@ const PhoneNumbers = () => {
                         </option>
                       ))}
                     </select>
-                    <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 rotate-90 w-4 h-4 text-gray-400 pointer-events-none" />
+                    <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                      <ChevronRight className="w-4 h-4 rotate-90" />
+                    </div>
                   </div>
-                </div>
-
-                <div className="flex items-start space-x-3.5 p-5 bg-white rounded-2xl border border-gray-100">
-                  <input
-                    type="checkbox"
-                    id="inboundWebhook"
-                    className="mt-0.5 w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500/20 cursor-pointer"
-                  />
-                  <label
-                    htmlFor="inboundWebhook"
-                    className="text-[14px] text-gray-600 font-medium"
-                  >
-                    Add an inbound webhook.{" "}
-                    <button className="text-blue-600 font-bold hover:underline">
-                      Learn more.
-                    </button>
-                  </label>
                 </div>
 
                 <div>
@@ -332,7 +319,7 @@ const PhoneNumbers = () => {
                   <div className="relative">
                     <select
                       id="inboundCountrySelect"
-                      className="w-full p-4.5 bg-gray-50 border border-gray-100 rounded-2xl text-gray-400 focus:ring-2 focus:ring-blue-500/10 outline-none appearance-none cursor-not-allowed font-medium text-sm"
+                      className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl text-gray-400 focus:ring-2 focus:ring-blue-500/10 outline-none appearance-none cursor-not-allowed font-medium text-sm"
                       disabled
                     >
                       <option>All countries allowed</option>
@@ -363,10 +350,13 @@ const PhoneNumbers = () => {
                       <ExternalLink className="w-4 h-4" />
                     </button>
                   </div>
-                  <div className="relative">
+                  <div className="relative group">
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors pointer-events-none">
+                      <User className="w-5 h-5" />
+                    </div>
                     <select
                       id="outboundAgentSelect"
-                      className="w-full p-4.5 bg-white border border-gray-200 rounded-2xl text-gray-900 focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 outline-none appearance-none font-medium text-sm transition-all"
+                      className="w-full pl-12 pr-12 py-4 bg-gray-50/50 border border-gray-200 rounded-2xl text-gray-900 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none appearance-none font-bold text-sm transition-all cursor-pointer hover:bg-white hover:border-gray-300 hover:shadow-sm"
                       value={selectedNumber.outbound_agent_id || ""}
                       onChange={(e) =>
                         handleUpdateNumber({
@@ -381,7 +371,9 @@ const PhoneNumbers = () => {
                         </option>
                       ))}
                     </select>
-                    <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 rotate-90 w-4 h-4 text-gray-400 pointer-events-none" />
+                    <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                      <ChevronRight className="w-4 h-4 rotate-90" />
+                    </div>
                   </div>
                 </div>
 
@@ -395,7 +387,7 @@ const PhoneNumbers = () => {
                   <div className="relative">
                     <select
                       id="outboundCountrySelect"
-                      className="w-full p-4.5 bg-gray-50 border border-gray-100 rounded-2xl text-gray-400 focus:ring-2 focus:ring-blue-500/10 outline-none appearance-none cursor-not-allowed font-medium text-sm"
+                      className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl text-gray-400 focus:ring-2 focus:ring-blue-500/10 outline-none appearance-none cursor-not-allowed font-medium text-sm"
                       disabled
                     >
                       <option>All countries allowed</option>
