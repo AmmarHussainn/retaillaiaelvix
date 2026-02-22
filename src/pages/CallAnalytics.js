@@ -116,8 +116,8 @@ const CallAnalytics = () => {
   };
 
   return (
-    <div className="flex flex-col h-full lg:h-[calc(100vh-180px)] space-y-4 lg:space-y-6 animate-in fade-in duration-500 lg:overflow-hidden -m-4 lg:m-0 p-4 lg:p-0">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="flex flex-col h-full space-y-4 lg:space-y-6 animate-in fade-in duration-500 overflow-hidden">
+      <div className="flex-shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl lg:text-2xl font-bold text-gray-900">
             Call Logs
@@ -138,7 +138,7 @@ const CallAnalytics = () => {
       </div>
 
       {/* Filters */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      <div className="flex-shrink-0 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
@@ -166,7 +166,7 @@ const CallAnalytics = () => {
       </div>
 
       {/* Logs Table */}
-      <div className="flex-1 bg-white rounded-2xl border border-gray-200 shadow-sm flex flex-col min-h-[400px] lg:min-h-0 overflow-hidden">
+      <div className="flex-1 bg-white rounded-2xl border border-gray-200 shadow-sm flex flex-col overflow-hidden min-h-0">
         <div className="flex-1 overflow-auto scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent">
           <table className="w-full text-left border-separate border-spacing-0 min-w-[800px] lg:min-w-full">
             <thead className="sticky top-0 z-10">

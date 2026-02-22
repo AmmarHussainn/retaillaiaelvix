@@ -152,7 +152,7 @@ const PhoneNumbers = () => {
           showSidebarOnMobile ? "flex" : "hidden lg:flex"
         } w-full lg:w-80 border-r border-gray-100 flex-col bg-white h-full z-10`}
       >
-        <div className="p-6 flex justify-between items-center">
+        <div className="pr-6 pt-9 pl-8 flex justify-between items-center">
           <h2 className="text-xl font-bold text-gray-900">Phone Numbers</h2>
           <button
             onClick={() => setIsBuyModalOpen(true)}
@@ -162,7 +162,7 @@ const PhoneNumbers = () => {
           </button>
         </div>
 
-        <div className="px-6 pb-4">
+        <div className="pr-6 pl-8 pt-3 pb-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
             <input
