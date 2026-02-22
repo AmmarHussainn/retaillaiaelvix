@@ -8,7 +8,6 @@ import {
   ExternalLink,
   ChevronRight,
   PhoneCall,
-  MessageSquare,
   Copy,
   MoreVertical,
   User,
@@ -28,6 +27,7 @@ const PhoneNumbers = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isBuyModalOpen, setIsBuyModalOpen] = useState(false);
   const [isMakeCallModalOpen, setIsMakeCallModalOpen] = useState(false);
+  const [showSidebarOnMobile, setShowSidebarOnMobile] = useState(true);
   const toast = useToast();
 
   const [confirmationModal, setConfirmationModal] = useState({
@@ -89,6 +89,11 @@ const PhoneNumbers = () => {
     }
   };
 
+  const handleSelectNumber = (num) => {
+    setSelectedNumber(num);
+    setShowSidebarOnMobile(false);
+  };
+
   const initDelete = (number) => {
     setConfirmationModal({
       isOpen: true,
@@ -140,9 +145,13 @@ const PhoneNumbers = () => {
   );
 
   return (
-    <div className="flex h-[calc(100vh-100px)] overflow-hidden -m-6 bg-white">
+    <div className="flex flex-col lg:flex-row h-full lg:h-[calc(100vh-100px)] overflow-hidden lg:-m-6 bg-white relative">
       {/* Sidebar */}
-      <div className="w-80 border-r border-gray-100 flex flex-col bg-white">
+      <div
+        className={`${
+          showSidebarOnMobile ? "flex" : "hidden lg:flex"
+        } w-full lg:w-80 border-r border-gray-100 flex-col bg-white h-full z-10`}
+      >
         <div className="p-6 flex justify-between items-center">
           <h2 className="text-xl font-bold text-gray-900">Phone Numbers</h2>
           <button
@@ -179,7 +188,7 @@ const PhoneNumbers = () => {
             filteredNumbers.map((num) => (
               <button
                 key={num.phone_number}
-                onClick={() => setSelectedNumber(num)}
+                onClick={() => handleSelectNumber(num)}
                 className={`w-full text-left px-4 py-3 rounded-xl transition-all flex items-center justify-between group ${
                   selectedNumber?.phone_number === num.phone_number
                     ? "bg-blue-50/50 text-blue-600 border border-blue-50"
@@ -203,22 +212,35 @@ const PhoneNumbers = () => {
       </div>
 
       {/* Detail View */}
-      <div className="flex-1 bg-white overflow-y-auto">
+      <div
+        className={`${
+          !showSidebarOnMobile ? "block" : "hidden lg:block"
+        } flex-1 bg-white overflow-y-auto h-full pb-20 lg:pb-0`}
+      >
         {selectedNumber ? (
-          <div className="max-w-6xl mx-auto p-10 space-y-10 animate-in fade-in slide-in-from-right-4 duration-500">
+          <div className="max-w-6xl mx-auto p-4 lg:p-10 space-y-6 lg:space-y-10 animate-in fade-in slide-in-from-right-4 duration-500">
+            {/* Mobile Back Button */}
+            <button
+              onClick={() => setShowSidebarOnMobile(true)}
+              className="lg:hidden flex items-center text-blue-600 font-bold mb-4"
+            >
+              <ChevronRight className="w-5 h-5 rotate-180 mr-1" />
+              Back to list
+            </button>
+
             {/* Header */}
-            <div className="flex justify-between items-start">
-              <div className="space-y-1.5">
-                <div className="flex items-center space-x-3">
-                  <h1 className="text-3xl font-bold text-gray-900 tracking-tightest">
+            <div className="flex flex-col md:flex-row justify-between items-start gap-6">
+              <div className="space-y-1.5 w-full md:w-auto">
+                <div className="flex items-center justify-between md:justify-start space-x-3">
+                  <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 tracking-tightest">
                     {formatPhoneNumber(selectedNumber.phone_number)}
                   </h1>
                   <button className="p-1 text-gray-400 hover:text-gray-900 transition-colors">
                     <Edit2 className="w-4 h-4" />
                   </button>
                 </div>
-                <div className="flex items-center space-x-2 text-[13px] text-gray-500 font-medium">
-                  <span className="flex items-center gap-1.5">
+                <div className="flex flex-wrap items-center gap-2 text-[13px] text-gray-500 font-medium">
+                  <span className="flex items-center gap-1.5 bg-gray-50 px-2 py-1 rounded-md">
                     ID: {selectedNumber.phone_number}
                     <button
                       onClick={() => {
@@ -232,24 +254,29 @@ const PhoneNumbers = () => {
                       <Copy className="w-3.5 h-3.5" />
                     </button>
                   </span>
-                  <span className="text-gray-300"> • </span>
-                  <span>Provider: Twilio</span>
+                  <span className="hidden md:inline text-gray-300"> • </span>
+                  <span className="bg-gray-50 px-2 py-1 rounded-md">
+                    Provider: Twilio
+                  </span>
                 </div>
               </div>
 
-              <div className="flex space-x-2">
+              <div className="flex sm:space-x-2 w-full sm:w-auto flex-col sm:flex-row gap-2">
                 <button
                   onClick={() => setIsMakeCallModalOpen(true)}
-                  className="flex items-center px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-50 shadow-sm transition-all"
+                  className="flex items-center justify-center px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-50 shadow-sm transition-all w-full sm:w-auto"
                 >
-                  <PhoneCall className="w-4 h-4 mr-2.5" />
+                  <PhoneCall className="w-4 h-4 mr-2" />
                   Make an outbound call
                 </button>
-                <div className="relative group">
-                  <button className="p-2.5 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 shadow-sm transition-all">
+                <div className="relative group w-full sm:w-auto">
+                  <button className="w-full sm:w-auto flex items-center justify-center p-2.5 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 shadow-sm transition-all sm:aspect-square">
                     <MoreVertical className="w-5 h-5 text-gray-500" />
+                    <span className="sm:hidden ml-2 font-bold text-sm text-gray-700">
+                      More Actions
+                    </span>
                   </button>
-                  <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-100 rounded-2xl shadow-xl py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-20">
+                  <div className="absolute right-0 bottom-full sm:bottom-auto sm:mt-2 w-full sm:w-48 bg-white border border-gray-100 rounded-2xl shadow-xl py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-20">
                     <button
                       onClick={() => initDelete(selectedNumber.phone_number)}
                       className="w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-red-50 flex items-center font-bold"

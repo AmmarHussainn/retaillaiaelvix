@@ -116,17 +116,19 @@ const CallAnalytics = () => {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-180px)] space-y-6 animate-in fade-in duration-500 overflow-hidden">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="flex flex-col h-full lg:h-[calc(100vh-180px)] space-y-4 lg:space-y-6 animate-in fade-in duration-500 lg:overflow-hidden -m-4 lg:m-0 p-4 lg:p-0">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Call Logs</h1>
-          <p className="text-gray-500">
+          <h1 className="text-xl lg:text-2xl font-bold text-gray-900">
+            Call Logs
+          </h1>
+          <p className="text-sm text-gray-500">
             Track and analyze all your AI agent conversations
           </p>
         </div>
         <button
           onClick={fetchCalls}
-          className="flex items-center justify-center px-4 py-2 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors shadow-sm"
+          className="flex items-center justify-center px-4 py-2 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors shadow-sm w-full sm:w-auto"
         >
           <Loader2
             className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`}
@@ -136,15 +138,15 @@ const CallAnalytics = () => {
       </div>
 
       {/* Filters */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             type="text"
-            placeholder="Search by Call ID or Agent..."
+            placeholder="Search by ID or Agent..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+            className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-sm lg:text-base"
           />
         </div>
         <div className="relative">
@@ -152,7 +154,7 @@ const CallAnalytics = () => {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all appearance-none"
+            className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all appearance-none text-sm lg:text-base"
           >
             <option value="all">All Statuses</option>
             <option value="ended">Ended</option>
@@ -164,9 +166,9 @@ const CallAnalytics = () => {
       </div>
 
       {/* Logs Table */}
-      <div className="flex-1 bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm flex flex-col">
+      <div className="flex-1 bg-white rounded-2xl border border-gray-200 shadow-sm flex flex-col min-h-[400px] lg:min-h-0 overflow-hidden">
         <div className="flex-1 overflow-auto scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent">
-          <table className="w-full text-left border-separate border-spacing-0">
+          <table className="w-full text-left border-separate border-spacing-0 min-w-[800px] lg:min-w-full">
             <thead className="sticky top-0 z-10">
               <tr className="bg-gray-50/95 backdrop-blur-sm border-b border-gray-100">
                 <th className="px-6 py-4 text-sm font-semibold text-gray-600 border-b border-gray-100">
@@ -274,34 +276,34 @@ const CallAnalytics = () => {
 
       {/* Call Details Modal */}
       {isModalOpen && selectedCall && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col scale-in duration-300">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200 overflow-hidden">
+          <div className="bg-white lg:rounded-[2.5rem] shadow-2xl w-full max-w-4xl h-[100dvh] sm:h-auto sm:max-h-[90vh] overflow-hidden flex flex-col scale-in duration-300">
             {/* Modal Header */}
-            <div className="px-8 py-6 border-b border-gray-50 bg-gray-50/30 flex justify-between items-center">
-              <div className="flex items-center space-x-4">
-                <div className="p-3 bg-blue-100 text-blue-600 rounded-2xl">
-                  <PhoneCall className="w-6 h-6" />
+            <div className="px-5 lg:px-8 py-4 lg:py-6 border-b border-gray-50 bg-gray-50/30 flex justify-between items-center">
+              <div className="flex items-center space-x-3 lg:space-x-4">
+                <div className="p-2 lg:p-3 bg-blue-100 text-blue-600 rounded-xl lg:rounded-2xl">
+                  <PhoneCall className="w-5 h-5 lg:w-6 lg:h-6" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-gray-900">
+                  <h2 className="text-lg lg:text-xl font-bold text-gray-900">
                     Call Details
                   </h2>
-                  <p className="text-sm text-gray-500 font-medium">
+                  <p className="text-[10px] lg:text-sm text-gray-500 font-medium truncate max-w-[150px] lg:max-w-none">
                     ID: {selectedCall.call_id}
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="p-3 hover:bg-white rounded-2xl transition-all shadow-sm border border-transparent hover:border-gray-100"
+                className="p-2 lg:p-3 hover:bg-white rounded-xl lg:rounded-2xl transition-all shadow-sm border border-transparent hover:border-gray-100"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* Modal Content */}
-            <div className="flex-1 overflow-auto p-8">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="flex-1 overflow-auto p-5 lg:p-8">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
                 {/* Stats Column */}
                 <div className="space-y-6">
                   <div className="p-6 bg-gray-50 rounded-[2rem] space-y-4">
@@ -367,7 +369,7 @@ const CallAnalytics = () => {
                     <MessageSquare className="w-5 h-5 mr-2 text-blue-500" />
                     Transcript
                   </h3>
-                  <div className="bg-gray-50 rounded-[2.5rem] p-8 min-h-[400px] border border-gray-100">
+                  <div className="bg-gray-50 rounded-[2rem] lg:rounded-[2.5rem] p-5 lg:p-8 min-h-[300px] lg:min-h-[400px] border border-gray-100">
                     {selectedCall.transcript ? (
                       <div className="prose prose-sm max-w-none text-gray-600 leading-relaxed">
                         {selectedCall.transcript.split("\n").map((line, i) => (
